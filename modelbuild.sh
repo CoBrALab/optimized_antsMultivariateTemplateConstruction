@@ -3,6 +3,7 @@
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping],[0.25])
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' a average all subjects is constructed as a starting target],[none])
+# ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target],[])
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[3])
 # ARG_OPTIONAL_BOOLEAN([fast],[],[Run SyN registration with Mattes instead of CC],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
@@ -23,41 +24,41 @@
 
 die()
 {
-	local _ret="${2:-1}"
-	test "${_PRINT_HELP:-no}" = yes && print_help >&2
-	echo "$1" >&2
-	exit "${_ret}"
+  local _ret="${2:-1}"
+  test "${_PRINT_HELP:-no}" = yes && print_help >&2
+  echo "$1" >&2
+  exit "${_ret}"
 }
 
 # validators
 
 averagetype()
 {
-	local _allowed=("mean" "median" "normmean") _seeking="$1"
-	for element in "${_allowed[@]}"
-	do
-		test "$element" = "$_seeking" && echo "$element" && return 0
-	done
-	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
+  local _allowed=("mean" "median" "normmean") _seeking="$1"
+  for element in "${_allowed[@]}"
+  do
+    test "$element" = "$_seeking" && echo "$element" && return 0
+  done
+  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
 }
 
 
 sharptypetype()
 {
-	local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
-	for element in "${_allowed[@]}"
-	do
-		test "$element" = "$_seeking" && echo "$element" && return 0
-	done
-	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
+  local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
+  for element in "${_allowed[@]}"
+  do
+    test "$element" = "$_seeking" && echo "$element" && return 0
+  done
+  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
 }
 
 
 begins_with_short_option()
 {
-	local first_option all_short_options='h'
-	first_option="${1:0:1}"
-	test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
+  local first_option all_short_options='h'
+  first_option="${1:0:1}"
+  test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
 }
 
 # THE DEFAULTS INITIALIZATION - POSITIONALS
@@ -67,6 +68,7 @@ _arg_inputs=('' )
 _arg_output_dir="output"
 _arg_gradient_step="0.25"
 _arg_starting_target="none"
+_arg_starting_target_mask=
 _arg_iterations="3"
 _arg_fast="off"
 _arg_debug="off"
@@ -79,152 +81,161 @@ _arg_stages=('rigid' 'similarity' 'affine' 'nlin')
 
 print_help()
 {
-	printf '%s\n' "A qbatch and optimal registration pyramid based re-implementaiton fo antsMultivariateTemplateConstruction2.sh"
-	printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--iterations <arg>] [--(no-)fast] [--(no-)debug] [--(no-)dry-run] [--average-type <AVERAGE>] [--masks <arg>] [--sharpen-type <SHARPEN>] [--stages <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
-	printf '\t%s\n' "<inputs>: list of input files"
-	printf '\t%s\n' "-h, --help: Prints help"
-	printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
-	printf '\t%s\n' "--gradient-step: Gradient scaling step during template warping (default: '0.25')"
-	printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' a average all subjects is constructed as a starting target (default: 'none')"
-	printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '3')"
-	printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
-	printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
-	printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
-	printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')"
-	printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
-	printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
-	printf '\t%s' "--stages: Stages of modelbuild used (default array elements:"
-	printf " '%s'" 'rigid' 'similarity' 'affine' 'nlin'
-	printf ')\n'
+  printf '%s\n' "A qbatch and optimal registration pyramid based re-implementaiton fo antsMultivariateTemplateConstruction2.sh"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--(no-)fast] [--(no-)debug] [--(no-)dry-run] [--average-type <AVERAGE>] [--masks <arg>] [--sharpen-type <SHARPEN>] [--stages <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf '\t%s\n' "<inputs>: list of input files"
+  printf '\t%s\n' "-h, --help: Prints help"
+  printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
+  printf '\t%s\n' "--gradient-step: Gradient scaling step during template warping (default: '0.25')"
+  printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' a average all subjects is constructed as a starting target (default: 'none')"
+  printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
+  printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '3')"
+  printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
+  printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
+  printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
+  printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')"
+  printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
+  printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
+  printf '\t%s' "--stages: Stages of modelbuild used (default array elements:"
+  printf " '%s'" 'rigid' 'similarity' 'affine' 'nlin'
+  printf ')\n'
 }
 
 
 parse_commandline()
 {
-	_positionals_count=0
-	while test $# -gt 0
-	do
-		_key="$1"
-		case "$_key" in
-			-h|--help)
-				print_help
-				exit 0
-				;;
-			-h*)
-				print_help
-				exit 0
-				;;
-			--output-dir)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_output_dir="$2"
-				shift
-				;;
-			--output-dir=*)
-				_arg_output_dir="${_key##--output-dir=}"
-				;;
-			--gradient-step)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_gradient_step="$2"
-				shift
-				;;
-			--gradient-step=*)
-				_arg_gradient_step="${_key##--gradient-step=}"
-				;;
-			--starting-target)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_starting_target="$2"
-				shift
-				;;
-			--starting-target=*)
-				_arg_starting_target="${_key##--starting-target=}"
-				;;
-			--iterations)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_iterations="$2"
-				shift
-				;;
-			--iterations=*)
-				_arg_iterations="${_key##--iterations=}"
-				;;
-			--no-fast|--fast)
-				_arg_fast="on"
-				test "${1:0:5}" = "--no-" && _arg_fast="off"
-				;;
-			--no-debug|--debug)
-				_arg_debug="on"
-				test "${1:0:5}" = "--no-" && _arg_debug="off"
-				;;
-			--no-dry-run|--dry-run)
-				_arg_dry_run="on"
-				test "${1:0:5}" = "--no-" && _arg_dry_run="off"
-				;;
-			--average-type)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_average_type="$(averagetype "$2" "average-type")" || exit 1
-				shift
-				;;
-			--average-type=*)
-				_arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
-				;;
-			--masks)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_masks="$2"
-				shift
-				;;
-			--masks=*)
-				_arg_masks="${_key##--masks=}"
-				;;
-			--sharpen-type)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
-				shift
-				;;
-			--sharpen-type=*)
-				_arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
-				;;
-			--stages)
-				test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-				_arg_stages+=("$2")
-				shift
-				;;
-			--stages=*)
-				_arg_stages+=("${_key##--stages=}")
-				;;
-			*)
-				_last_positional="$1"
-				_positionals+=("$_last_positional")
-				_positionals_count=$((_positionals_count + 1))
-				;;
-		esac
-		shift
-	done
+  _positionals_count=0
+  while test $# -gt 0
+  do
+    _key="$1"
+    case "$_key" in
+      -h|--help)
+        print_help
+        exit 0
+        ;;
+      -h*)
+        print_help
+        exit 0
+        ;;
+      --output-dir)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_output_dir="$2"
+        shift
+        ;;
+      --output-dir=*)
+        _arg_output_dir="${_key##--output-dir=}"
+        ;;
+      --gradient-step)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_gradient_step="$2"
+        shift
+        ;;
+      --gradient-step=*)
+        _arg_gradient_step="${_key##--gradient-step=}"
+        ;;
+      --starting-target)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_target="$2"
+        shift
+        ;;
+      --starting-target=*)
+        _arg_starting_target="${_key##--starting-target=}"
+        ;;
+      --starting-target-mask)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_target_mask="$2"
+        shift
+        ;;
+      --starting-target-mask=*)
+        _arg_starting_target_mask="${_key##--starting-target-mask=}"
+        ;;
+      --iterations)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_iterations="$2"
+        shift
+        ;;
+      --iterations=*)
+        _arg_iterations="${_key##--iterations=}"
+        ;;
+      --no-fast|--fast)
+        _arg_fast="on"
+        test "${1:0:5}" = "--no-" && _arg_fast="off"
+        ;;
+      --no-debug|--debug)
+        _arg_debug="on"
+        test "${1:0:5}" = "--no-" && _arg_debug="off"
+        ;;
+      --no-dry-run|--dry-run)
+        _arg_dry_run="on"
+        test "${1:0:5}" = "--no-" && _arg_dry_run="off"
+        ;;
+      --average-type)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_average_type="$(averagetype "$2" "average-type")" || exit 1
+        shift
+        ;;
+      --average-type=*)
+        _arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
+        ;;
+      --masks)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_masks="$2"
+        shift
+        ;;
+      --masks=*)
+        _arg_masks="${_key##--masks=}"
+        ;;
+      --sharpen-type)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
+        shift
+        ;;
+      --sharpen-type=*)
+        _arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
+        ;;
+      --stages)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_stages+=("$2")
+        shift
+        ;;
+      --stages=*)
+        _arg_stages+=("${_key##--stages=}")
+        ;;
+      *)
+        _last_positional="$1"
+        _positionals+=("$_last_positional")
+        _positionals_count=$((_positionals_count + 1))
+        ;;
+    esac
+    shift
+  done
 }
 
 
 handle_passed_args_count()
 {
-	local _required_args_string="'inputs'"
-	test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
+  local _required_args_string="'inputs'"
+  test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
 }
 
 
 assign_positional_args()
 {
-	local _positional_name _shift_for=$1
-	_positional_names="_arg_inputs "
-	_our_args=$((${#_positionals[@]} - 1))
-	for ((ii = 0; ii < _our_args; ii++))
-	do
-		_positional_names="$_positional_names _arg_inputs[$((ii + 1))]"
-	done
+  local _positional_name _shift_for=$1
+  _positional_names="_arg_inputs "
+  _our_args=$((${#_positionals[@]} - 1))
+  for ((ii = 0; ii < _our_args; ii++))
+  do
+    _positional_names="$_positional_names _arg_inputs[$((ii + 1))]"
+  done
 
-	shift "$_shift_for"
-	for _positional_name in ${_positional_names}
-	do
-		test $# -gt 0 || break
-		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an Argbash bug." 1
-		shift
-	done
+  shift "$_shift_for"
+  for _positional_name in ${_positional_names}
+  do
+    test $# -gt 0 || break
+    eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an Argbash bug." 1
+    shift
+  done
 }
 
 parse_commandline "$@"
@@ -258,7 +269,7 @@ function run_smart {
 
 mkdir -p ${_arg_output_dir}/jobs
 
-_arg_inputs=($(<${_arg_inputs[0]}))
+mapfile -t _arg_inputs < ${_arg_inputs[0]}
 
 # Fill up array of masks
 if [[ -z ${_arg_masks} ]]; then
@@ -267,8 +278,10 @@ if [[ -z ${_arg_masks} ]]; then
     _arg_masks+=('NONE')
   done
 else
-  _arg_masks=($(<${_arg_masks}))
+  mapfile -t _arg_masks < ${_arg_masks}
 fi
+
+target_mask=${_arg_starting_target_mask}
 
 # Enable fast mode in antsRegistration_affine_SyN.sh
 if [[ ${_arg_fast} == "on" ]]; then
@@ -290,17 +303,16 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       median)
         printf '%s\n' "${_arg_inputs[@]}" > ${_arg_output_dir}/medianlist.txt
         ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/startingtarget.nii.gz 0 > ${_arg_output_dir}/jobs/initialaverage
-        rm -f ${_arg_output_dir}/medianlist.txt
         ;;
     esac
 
-  if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-    cat ${_arg_output_dir}/jobs/initialaverage
-  fi
+    if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
+      cat ${_arg_output_dir}/jobs/initialaverage
+    fi
 
-  if [[ ${_arg_dry_run} == "off" ]]; then
-    bash ${_arg_output_dir}/jobs/initialaverage
-  fi
+    if [[ ${_arg_dry_run} == "off" ]]; then
+      bash ${_arg_output_dir}/jobs/initialaverage
+    fi
 
 
   fi
@@ -324,39 +336,87 @@ for reg_type in "${_arg_stages[@]}"; do
 
       # Register images to target
       j=0
+      rm -f ${_arg_output_dir}/jobs/${reg_type}_${i}_reg && touch ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
+      rm -f ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample && touch ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
+      rm -f ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage && touch ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage
       for subject in "${_arg_inputs[@]}"; do
         if [[ -s ${_arg_masks[${j}]} ]]; then
           _mask="--moving-mask ${_arg_masks[${j}]}"
+          mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
         else
           _mask=""
         fi
+        if [[ -n ${target_mask} ]]; then
+          _mask+=" --fixed-mask ${target_mask}"
+        fi
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) ]]; then
           if [[ ${reg_type} != "nlin" ]]; then
-            echo antsRegistration_affine_SyN.sh \
+            echo antsRegistration_affine_SyN.sh --clobber \
               --skip-nonlinear --linear-type ${reg_type} ${_arg_fast} \
               ${_mask} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
               ${subject} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_ \
+              >> ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
+            if [[ -s ${_arg_masks[${j}]} ]]; then
+              echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
+                -n GenericLabel \
+                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_0GenericAffine.mat \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${subject}) \
+                >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
+            fi
           else
-            echo antsRegistration_affine_SyN.sh \
+            echo antsRegistration_affine_SyN.sh --clobber \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
               ${_mask} \
               ${subject} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_ \
+              >> ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
+            if [[ -s ${_arg_masks[${j}]} ]]; then
+              echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
+                -n GenericLabel \
+                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_1Warp.nii.gz \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_0GenericAffine.mat \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${subject}) \
+                >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
+            fi
           fi
           ((++j))
         fi
-      done > ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
+      done
+
+      if [[ ${_arg_masks[0]} != "NONE" ]]; then
+        if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz ]]; then
+          echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0 \
+            $(j=0 ; for subject in "${_arg_inputs[@]}"; do if [[ -s ${_arg_masks[${j}]} ]]; then
+              echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${subject}) "; fi
+              ((++j))
+          done) > ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage
+
+          echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
+            ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 1e-12 Inf 1 0 \
+            >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage
+        fi
+        target_mask=${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz
+      else
+        target_mask=""
+      fi
 
       if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
         cat ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
+        cat ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
+        cat ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage
       fi
 
       if [[ ${_arg_dry_run} == "off" ]]; then
         bash ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
+        bash ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
+        bash ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage
       fi
 
+      rm -f ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate && touch ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
 
       if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ]]; then
         echo "#!/bin/bash" >  ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
