@@ -335,51 +335,54 @@ for reg_type in "${_arg_stages[@]}"; do
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
 
       # Register images to target
-      j=0
       rm -f ${_arg_output_dir}/jobs/${reg_type}_${i}_reg && touch ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
       rm -f ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample && touch ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
       rm -f ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage && touch ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage
-      for subject in "${_arg_inputs[@]}"; do
+      for j in "${!_arg_inputs[@]}"; do
+
+        #Check for existance of moving mask, if it exists, add option
         if [[ -s ${_arg_masks[${j}]} ]]; then
           _mask="--moving-mask ${_arg_masks[${j}]}"
           mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
         else
           _mask=""
         fi
+
+        # If target mask is defined, add to the registration command
         if [[ -n ${target_mask} ]]; then
           _mask+=" --fixed-mask ${target_mask}"
         fi
-        if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) ]]; then
+        if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) ]]; then
           if [[ ${reg_type} != "nlin" ]]; then
             echo antsRegistration_affine_SyN.sh --clobber \
               --skip-nonlinear --linear-type ${reg_type} ${_arg_fast} \
               ${_mask} \
-              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
-              ${subject} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_ \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
+              ${_arg_inputs[${j}]} ${target} \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_ \
               >> ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
             if [[ -s ${_arg_masks[${j}]} ]]; then
               echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
                 -n GenericLabel \
-                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_0GenericAffine.mat \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${subject}) \
+                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_0GenericAffine.mat \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
                 >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
             fi
           else
             echo antsRegistration_affine_SyN.sh --clobber \
-              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               ${_mask} \
-              ${subject} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_ \
+              ${_arg_inputs[${j}]} ${target} \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_ \
               >> ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
             if [[ -s ${_arg_masks[${j}]} ]]; then
               echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
                 -n GenericLabel \
-                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_1Warp.nii.gz \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_0GenericAffine.mat \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${subject}) \
+                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_1Warp.nii.gz \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_0GenericAffine.mat \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
                 >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
             fi
           fi
@@ -390,8 +393,8 @@ for reg_type in "${_arg_stages[@]}"; do
       if [[ ${_arg_masks[0]} != "NONE" ]]; then
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz ]]; then
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0 \
-            $(j=0 ; for subject in "${_arg_inputs[@]}"; do if [[ -s ${_arg_masks[${j}]} ]]; then
-              echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${subject}) "; fi
+            $(for j in "${!_arg_inputs[@]}"; do if [[ -s ${_arg_masks[${j}]} ]]; then
+              echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) "; fi
               ((++j))
           done) > ${_arg_output_dir}/jobs/${reg_type}_${i}_maskaverage
 
@@ -425,16 +428,16 @@ for reg_type in "${_arg_stages[@]}"; do
         case ${_arg_average_type} in
           mean)
             echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              1 $(for subject in "${_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) "; done) \
+              1 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
               >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
             ;;
           normmean)
             echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              2 $(for subject in "${_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) "; done) \
+              2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
               >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
             ;;
           median)
-            for subject in "${_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${subject}) "; done > ${_arg_output_dir}/medianlist.txt
+            for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done > ${_arg_output_dir}/medianlist.txt
             echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0 \
               >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
             ;;
@@ -464,12 +467,12 @@ for reg_type in "${_arg_stages[@]}"; do
 
 
         echo ${AVERAGE_AFFINE_PROGRAM} 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-          $(for subject in "${_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_0GenericAffine.mat "; done) \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_0GenericAffine.mat "; done) \
           >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
 
         if [[ ${reg_type} == "nlin" ]]; then
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
-            0 $(for subject in "${_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${subject} .nii.gz)_1Warp.nii.gz "; done) \
+            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_1Warp.nii.gz "; done) \
             >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
           echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz m ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz ${_arg_gradient_step} \
             >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
