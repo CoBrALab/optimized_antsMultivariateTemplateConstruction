@@ -399,7 +399,6 @@ for reg_type in "${_arg_stages[@]}"; do
                 >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
             fi
           fi
-          ((++j))
         fi
       done
 
