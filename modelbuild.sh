@@ -371,13 +371,13 @@ for reg_type in "${_arg_stages[@]}"; do
               --convergence ${_arg_convergence} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               ${_arg_inputs[${j}]} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_ \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
               >> ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
             if [[ -s ${_arg_masks[${j}]} ]]; then
               echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
                 -n GenericLabel \
                 -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_0GenericAffine.mat \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
                 >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
             fi
@@ -387,14 +387,14 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_mask} \
               --convergence ${_arg_convergence} \
               ${_arg_inputs[${j}]} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_ \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
               >> ${_arg_output_dir}/jobs/${reg_type}_${i}_reg
             if [[ -s ${_arg_masks[${j}]} ]]; then
               echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
                 -n GenericLabel \
                 -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_1Warp.nii.gz \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_0GenericAffine.mat \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
                 >> ${_arg_output_dir}/jobs/${reg_type}_${i}_maskresample
             fi
@@ -480,12 +480,12 @@ for reg_type in "${_arg_stages[@]}"; do
 
 
         echo ${AVERAGE_AFFINE_PROGRAM} 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_0GenericAffine.mat "; done) \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat "; done) \
           >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
 
         if [[ ${reg_type} == "nlin" ]]; then
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
-            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} .nii.gz)_1Warp.nii.gz "; done) \
+            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
             >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
           echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz m ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz ${_arg_gradient_step} \
             >> ${_arg_output_dir}/jobs/${reg_type}_${i}_shapeupdate
