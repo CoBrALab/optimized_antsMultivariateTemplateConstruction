@@ -423,7 +423,7 @@ for reg_type in "${_arg_stages[@]}"; do
           done) > ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
 
           echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
-            ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 1e-12 Inf 1 0 \
+            ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0.25 Inf 1 0 \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
         fi
         target_mask=${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz
