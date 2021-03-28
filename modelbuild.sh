@@ -363,11 +363,19 @@ for reg_type in "${_arg_stages[@]}"; do
         if [[ -n ${target_mask} ]]; then
           _mask+=" --fixed-mask ${target_mask}"
         fi
+
+        # If three was a previous round of modelbuilding, bootstrap registration with affine
+        if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" ]]; then
+          bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat"
+        else
+          bootstrap=""
+        fi
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) ]]; then
           if [[ ${reg_type} != "nlin" ]]; then
             echo antsRegistration_affine_SyN.sh --clobber \
               --skip-nonlinear --linear-type ${reg_type} ${_arg_fast} \
               ${_mask} \
+              ${bootstrap} \
               --convergence ${_arg_convergence} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               ${_arg_inputs[${j}]} ${target} \
@@ -385,6 +393,7 @@ for reg_type in "${_arg_stages[@]}"; do
             echo antsRegistration_affine_SyN.sh --clobber \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               ${_mask} \
+              ${bootstrap} \
               --convergence ${_arg_convergence} \
               ${_arg_inputs[${j}]} ${target} \
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
