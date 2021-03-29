@@ -327,11 +327,13 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       qbatch -N modelbuild_${_datetime}_initialaverage -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
     fi
 
+    last_round_job="--depend modelbuild_${_datetime}_initialaverage"
 
   fi
   target=${_arg_output_dir}/startingtarget.nii.gz
 else
   target=${_arg_starting_target}
+  last_round_job=""
 fi
 
 #AVERAGE_AFFINE_PROGRAM="AverageAffineTransform"
@@ -438,12 +440,20 @@ for reg_type in "${_arg_stages[@]}"; do
       fi
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_reg ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
-        qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
-        qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage --depend modelbuild_${_datetime}_${reg_type}_${i}_maskresample* -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
+        qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_reg \
+          ${last_round_job} \
+          ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
+        qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
+          --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* \
+          --chunksize 0 \
+          ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
+        qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
+          --depend modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
+          -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
       fi
 
       rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+      last_round_job=""
 
       if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ]]; then
         echo "#!/bin/bash" >  ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
@@ -538,15 +548,16 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
 
         if [[ ${_arg_dry_run} == "off" ]]; then
-          qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate --depend modelbuild_${_datetime}_${reg_type}_${i}_reg -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
+            --depend modelbuild_${_datetime}_${reg_type}_${i}_reg \
+            -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
         fi
-
+        last_round_job="--depend modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate"
       fi
 
     fi
 
     target=${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz
-
     ((++i))
   done
 
