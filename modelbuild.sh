@@ -2,7 +2,7 @@
 # ARG_HELP([A qbatch and optimal registration pyramid based re-implementaiton fo antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping],[0.25])
-# ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' a average all subjects is constructed as a starting target],[none])
+# ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target],[none])
 # ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target],[])
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[3])
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
@@ -89,7 +89,7 @@ print_help()
 	printf '\t%s\n' "-h, --help: Prints help"
 	printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
 	printf '\t%s\n' "--gradient-step: Gradient scaling step during template warping (default: '0.25')"
-	printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' a average all subjects is constructed as a starting target (default: 'none')"
+	printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target (default: 'none')"
 	printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
 	printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '3')"
 	printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
