@@ -462,7 +462,7 @@ for reg_type in "${_arg_stages[@]}"; do
         case ${_arg_average_type} in
           mean)
             echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              1 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
+              0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
             ;;
           normmean)
