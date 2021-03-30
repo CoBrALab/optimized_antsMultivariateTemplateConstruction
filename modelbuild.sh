@@ -508,7 +508,7 @@ for reg_type in "${_arg_stages[@]}"; do
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
             0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-          echo MultiplyImages ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz ${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
+          echo MultiplyImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz ${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
           echo antsApplyTransforms -d 3 -e vector \
             -i ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
