@@ -278,10 +278,14 @@ function run_smart {
   fi
 }
 
+# Setup a timestamp for prefixing all commands
 _datetime=$(date +%F_%H-%M-%S)
 
+# Setup a directory which contains all commands run
+# for this invocation
 mkdir -p ${_arg_output_dir}/jobs/${_datetime}
 
+# Load input file into array
 mapfile -t _arg_inputs < ${_arg_inputs[0]}
 
 # Fill up array of masks
@@ -294,6 +298,7 @@ else
   mapfile -t _arg_masks < ${_arg_masks}
 fi
 
+# If target mask is specified use it
 target_mask=${_arg_starting_target_mask}
 
 # Enable fast mode in antsRegistration_affine_SyN.sh
@@ -356,7 +361,7 @@ for reg_type in "${_arg_stages[@]}"; do
       rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
       for j in "${!_arg_inputs[@]}"; do
 
-        #Check for existance of moving mask, if it exists, add option
+        #Check for existence of moving mask, if it exists, add option
         if [[ -s ${_arg_masks[${j}]} ]]; then
           _mask="--moving-mask ${_arg_masks[${j}]}"
         else
@@ -368,7 +373,7 @@ for reg_type in "${_arg_stages[@]}"; do
           _mask+=" --fixed-mask ${target_mask}"
         fi
 
-        # If three was a previous round of modelbuilding, bootstrap registration with affine
+        # If three was a previous round of modelbuilding, bootstrap registration with it's affine
         if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" ]]; then
           bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat"
         else
@@ -396,6 +401,7 @@ for reg_type in "${_arg_stages[@]}"; do
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           fi
         fi
+        # If input masks were provided, resample them using the registration
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) && -s ${_arg_masks[${j}]} ]]; then
           if [[ ${reg_type} != "nlin" ]]; then
             echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
@@ -416,6 +422,7 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
       done
 
+      # If masks were supplied, merge them and hard threshold at >25% confidence
       if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz ]]; then
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0 \
@@ -455,10 +462,12 @@ for reg_type in "${_arg_stages[@]}"; do
       rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
       last_round_job=""
 
+      # Now we average the transformed input scans and shape update
       if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ]]; then
         echo "#!/bin/bash" >  ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
         echo "set -euo pipefail" >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
+        # Averaging
         case ${_arg_average_type} in
           mean)
             echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
@@ -477,6 +486,7 @@ for reg_type in "${_arg_stages[@]}"; do
             ;;
         esac
 
+        # Shape updating
         case ${_arg_sharpen_type} in
           laplacian)
             echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz Sharpen ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
@@ -492,6 +502,7 @@ for reg_type in "${_arg_stages[@]}"; do
             ;;
         esac
 
+        # We threshold greater than zero so we don't get negative values
         echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
           ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz 1e-12 Inf 1 0 \
           >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
@@ -500,22 +511,31 @@ for reg_type in "${_arg_stages[@]}"; do
           >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
 
+        # Average all the affine transforms
         echo ${AVERAGE_AFFINE_PROGRAM} 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
           $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat "; done) \
           >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
+        # Now we update the template shape using the same steps as the original code
         if [[ ${reg_type} == "nlin" ]]; then
+          # Average all the warp transforms
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
             0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+
+          # Scale warp average by the gradient step
           echo MultiplyImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz ${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+
+          # Apply the inverse affine to the scaled warp
           echo antsApplyTransforms -d 3 -e vector \
             -i ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+
+          # Apply the scaled warp 4 times to the template, then apply the inverse affine
           echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
@@ -526,6 +546,8 @@ for reg_type in "${_arg_stages[@]}"; do
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+
+          # Shape update the mask if it is used
           if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
             echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
@@ -540,12 +562,15 @@ for reg_type in "${_arg_stages[@]}"; do
           fi
 
         else
+          # Shape update a rigid/similarity/affine template by simply applying the inverse average affine
           echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+
+          # Shape update the mask if it is used
           if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
             echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
@@ -556,6 +581,7 @@ for reg_type in "${_arg_stages[@]}"; do
           fi
         fi
 
+        # Because we use BSpline resampling, we need to truncate the negative values it generates
         echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
           ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz 1e-12 Inf 1 0 \
           >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
