@@ -288,7 +288,7 @@ mapfile -t _arg_inputs < ${_arg_inputs[0]}
 if [[ -z ${_arg_masks} ]]; then
   _arg_masks=()
   for file in "${_arg_inputs[@]}"; do
-    _arg_masks+=('NONE')
+    _arg_masks+=('')
   done
 else
   mapfile -t _arg_masks < ${_arg_masks}
@@ -348,6 +348,7 @@ for reg_type in "${_arg_stages[@]}"; do
 
     if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_shapeupdate.nii.gz ]]; then
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
+      mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
 
       # Register images to target
       rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
@@ -358,7 +359,6 @@ for reg_type in "${_arg_stages[@]}"; do
         #Check for existance of moving mask, if it exists, add option
         if [[ -s ${_arg_masks[${j}]} ]]; then
           _mask="--moving-mask ${_arg_masks[${j}]}"
-          mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
         else
           _mask=""
         fi
@@ -416,7 +416,7 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
       done
 
-      if [[ ${_arg_masks[0]} != "NONE" ]]; then
+      if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz ]]; then
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0 \
             $(for j in "${!_arg_inputs[@]}"; do if [[ -s ${_arg_masks[${j}]} ]]; then
@@ -428,7 +428,7 @@ for reg_type in "${_arg_stages[@]}"; do
             ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0.25 Inf 1 0 \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
         fi
-        target_mask=${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz
+        target_mask=${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz
       else
         target_mask=""
       fi
@@ -526,6 +526,19 @@ for reg_type in "${_arg_stages[@]}"; do
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
+            echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
+              -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
+              -n GenericLabel \
+              -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+              -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
+              -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
+              -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
+              -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
+              -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          fi
+
         else
           echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
@@ -533,6 +546,14 @@ for reg_type in "${_arg_stages[@]}"; do
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
+            echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
+              -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
+              -n GenericLabel \
+              -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+              -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          fi
         fi
 
         echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
@@ -550,6 +571,7 @@ for reg_type in "${_arg_stages[@]}"; do
         if [[ ${_arg_dry_run} == "off" ]]; then
           qbatch -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_reg \
+            --depend modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
             -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
         fi
         last_round_job="--depend modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate"
