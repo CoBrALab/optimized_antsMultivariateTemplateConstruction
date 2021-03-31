@@ -6,11 +6,13 @@
 # ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target],[])
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[3])
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
+# ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements)],[])
 # ARG_OPTIONAL_BOOLEAN([fast],[],[Run SyN registration with Mattes instead of CC],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
 # ARG_OPTIONAL_SINGLE([average-type],[],[Type of averaging to apply during modelbuild],[normmean])
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
+# ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
 # ARG_TYPE_GROUP_SET([averagetype],[AVERAGE],[average-type],[mean,median,normmean])
 # ARG_OPTIONAL_SINGLE([sharpen-type],[],[Type of sharpening applied to average during modelbuild],[unsharp])
 # ARG_TYPE_GROUP_SET([sharptypetype],[SHARPEN],[sharpen-type],[none,laplacian,unsharp])
@@ -36,23 +38,23 @@ die()
 
 averagetype()
 {
-  local _allowed=("mean" "median" "normmean") _seeking="$1"
-  for element in "${_allowed[@]}"
-  do
-    test "$element" = "$_seeking" && echo "$element" && return 0
-  done
-  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
+	local _allowed=("mean" "median" "normmean") _seeking="$1"
+	for element in "${_allowed[@]}"
+	do
+		test "$element" = "$_seeking" && echo "$element" && return 0
+	done
+	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
 }
 
 
 sharptypetype()
 {
-  local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
-  for element in "${_allowed[@]}"
-  do
-    test "$element" = "$_seeking" && echo "$element" && return 0
-  done
-  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
+	local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
+	for element in "${_allowed[@]}"
+	do
+		test "$element" = "$_seeking" && echo "$element" && return 0
+	done
+	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
 }
 
 
@@ -73,11 +75,13 @@ _arg_starting_target="none"
 _arg_starting_target_mask=
 _arg_iterations="3"
 _arg_convergence="1e-7"
+_arg_float="off"
 _arg_fast="off"
 _arg_debug="off"
 _arg_dry_run="off"
 _arg_average_type="normmean"
 _arg_masks=
+_arg_mask_extract="off"
 _arg_sharpen_type="unsharp"
 _arg_stages=('rigid' 'similarity' 'affine' 'nlin')
 
@@ -85,7 +89,7 @@ _arg_stages=('rigid' 'similarity' 'affine' 'nlin')
 print_help()
 {
   printf '%s\n' "A qbatch and optimal registration pyramid based re-implementaiton fo antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)fast] [--(no-)debug] [--(no-)dry-run] [--average-type <AVERAGE>] [--masks <arg>] [--sharpen-type <SHARPEN>] [--stages <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--(no-)debug] [--(no-)dry-run] [--average-type <AVERAGE>] [--masks <arg>] [--(no-)mask-extract] [--sharpen-type <SHARPEN>] [--stages <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: list of input files"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -94,11 +98,13 @@ print_help()
   printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
   printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '3')"
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
+  printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
   printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
   printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')"
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
+  printf '\t%s\n' "--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)"
   printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
   printf '\t%s' "--stages: Stages of modelbuild used (default array elements:"
   printf " '%s'" 'rigid' 'similarity' 'affine' 'nlin'
@@ -169,6 +175,10 @@ parse_commandline()
       --convergence=*)
         _arg_convergence="${_key##--convergence=}"
         ;;
+      --no-float|--float)
+        _arg_float="on"
+        test "${1:0:5}" = "--no-" && _arg_float="off"
+        ;;
       --no-fast|--fast)
         _arg_fast="on"
         test "${1:0:5}" = "--no-" && _arg_fast="off"
@@ -196,6 +206,10 @@ parse_commandline()
         ;;
       --masks=*)
         _arg_masks="${_key##--masks=}"
+        ;;
+      --no-mask-extract|--mask-extract)
+        _arg_mask_extract="on"
+        test "${1:0:5}" = "--no-" && _arg_mask_extract="off"
         ;;
       --sharpen-type)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
@@ -306,8 +320,23 @@ target_mask=${_arg_starting_target_mask}
 if [[ ${_arg_fast} == "on" ]]; then
   _arg_fast="--fast"
 else
-  _arg_fast=""
+  _arg_fast="--no-fast"
 fi
+
+# Enable mask extraction in antsRegistration_affine_SyN.sh
+if [[ ${_arg_mask_extract} == "on" ]]; then
+  _arg_mask_extract="--mask-extract"
+else
+  _arg_mask_extract="--no-mask-extract"
+fi
+
+# Enable float mode for ants commands
+if [[ ${_arg_float} == "on" ]]; then
+  _arg_float="--float"
+else
+  _arg_float=""
+fi
+
 
 # If no starting target is supplied, create one
 if [[ ${_arg_starting_target} == "none" ]]; then
@@ -383,8 +412,9 @@ for reg_type in "${_arg_stages[@]}"; do
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) ]]; then
           if [[ ${reg_type} != "nlin" ]]; then
             echo antsRegistration_affine_SyN.sh --clobber \
+              ${_arg_float} \
               --skip-nonlinear --linear-type ${reg_type} ${_arg_fast} \
-              ${_mask} \
+              ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
               --convergence ${_arg_convergence} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
@@ -393,8 +423,9 @@ for reg_type in "${_arg_stages[@]}"; do
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           else
             echo antsRegistration_affine_SyN.sh --clobber \
+              ${_arg_float} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
-              ${_mask} \
+              ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
               --convergence ${_arg_convergence} \
               ${_arg_inputs[${j}]} ${target} \
@@ -405,14 +436,16 @@ for reg_type in "${_arg_stages[@]}"; do
         # If input masks were provided, resample them using the registration
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) && -s ${_arg_masks[${j}]} ]]; then
           if [[ ${reg_type} != "nlin" ]]; then
-            echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
+            echo antsApplyTransforms -d 3 ${_arg_float} \
+              -i ${_arg_masks[${j}]} \
               -n GenericLabel \
               -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
           else
-            echo antsApplyTransforms -d 3 -i ${_arg_masks[${j}]} \
+            echo antsApplyTransforms -d 3 ${_arg_float} \
+              -i ${_arg_masks[${j}]} \
               -n GenericLabel \
               -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
@@ -529,7 +562,7 @@ for reg_type in "${_arg_stages[@]}"; do
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Apply the inverse affine to the scaled warp
-          echo antsApplyTransforms -d 3 -e vector \
+          echo antsApplyTransforms -d 3 -e vector ${_arg_float} \
             -i ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
@@ -537,7 +570,8 @@ for reg_type in "${_arg_stages[@]}"; do
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Apply the scaled warp 4 times to the template, then apply the inverse affine
-          echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+          echo antsApplyTransforms -d 3 ${_arg_float} \
+            -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
@@ -550,7 +584,8 @@ for reg_type in "${_arg_stages[@]}"; do
 
           # Shape update the mask if it is used
           if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
-            echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
+            echo antsApplyTransforms -d 3 ${_arg_float} \
+              -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
               -n GenericLabel \
               -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
@@ -564,7 +599,8 @@ for reg_type in "${_arg_stages[@]}"; do
 
         else
           # Shape update a rigid/similarity/affine template by simply applying the inverse average affine
-          echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+          echo antsApplyTransforms -d 3 ${_arg_float} \
+            -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
@@ -573,7 +609,8 @@ for reg_type in "${_arg_stages[@]}"; do
 
           # Shape update the mask if it is used
           if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
-            echo antsApplyTransforms -d 3 -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
+            echo antsApplyTransforms -d 3 ${_arg_float} \
+              -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
               -n GenericLabel \
               -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
