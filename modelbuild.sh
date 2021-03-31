@@ -8,15 +8,16 @@
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements)],[])
 # ARG_OPTIONAL_BOOLEAN([fast],[],[Run SyN registration with Mattes instead of CC],[])
-# ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
-# ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
 # ARG_OPTIONAL_SINGLE([average-type],[],[Type of averaging to apply during modelbuild],[normmean])
-# ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
-# ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
+# ARG_OPTIONAL_BOOLEAN([rigid-update],[],[Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation)],[])
 # ARG_TYPE_GROUP_SET([averagetype],[AVERAGE],[average-type],[mean,median,normmean])
 # ARG_OPTIONAL_SINGLE([sharpen-type],[],[Type of sharpening applied to average during modelbuild],[unsharp])
 # ARG_TYPE_GROUP_SET([sharptypetype],[SHARPEN],[sharpen-type],[none,laplacian,unsharp])
+# ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
+# ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
 # ARG_OPTIONAL_REPEATED([stages],[],[Stages of modelbuild used],['rigid' 'similarity' 'affine' 'nlin'])
+# ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
+# ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
 # ARG_POSITIONAL_INF([inputs],[list of input files],[1])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
@@ -77,19 +78,20 @@ _arg_iterations="3"
 _arg_convergence="1e-7"
 _arg_float="off"
 _arg_fast="off"
-_arg_debug="off"
-_arg_dry_run="off"
 _arg_average_type="normmean"
+_arg_rigid_update="off"
+_arg_sharpen_type="unsharp"
 _arg_masks=
 _arg_mask_extract="off"
-_arg_sharpen_type="unsharp"
 _arg_stages=('rigid' 'similarity' 'affine' 'nlin')
+_arg_debug="off"
+_arg_dry_run="off"
 
 
 print_help()
 {
   printf '%s\n' "A qbatch and optimal registration pyramid based re-implementaiton fo antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--(no-)debug] [--(no-)dry-run] [--average-type <AVERAGE>] [--masks <arg>] [--(no-)mask-extract] [--sharpen-type <SHARPEN>] [--stages <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: list of input files"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -100,15 +102,16 @@ print_help()
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
   printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
-  printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
-  printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
   printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')"
+  printf '\t%s\n' "--rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)"
+  printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
   printf '\t%s\n' "--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)"
-  printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
   printf '\t%s' "--stages: Stages of modelbuild used (default array elements:"
   printf " '%s'" 'rigid' 'similarity' 'affine' 'nlin'
   printf ')\n'
+  printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
+  printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
 
 
@@ -183,14 +186,6 @@ parse_commandline()
         _arg_fast="on"
         test "${1:0:5}" = "--no-" && _arg_fast="off"
         ;;
-      --no-debug|--debug)
-        _arg_debug="on"
-        test "${1:0:5}" = "--no-" && _arg_debug="off"
-        ;;
-      --no-dry-run|--dry-run)
-        _arg_dry_run="on"
-        test "${1:0:5}" = "--no-" && _arg_dry_run="off"
-        ;;
       --average-type)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
         _arg_average_type="$(averagetype "$2" "average-type")" || exit 1
@@ -198,6 +193,18 @@ parse_commandline()
         ;;
       --average-type=*)
         _arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
+        ;;
+      --no-rigid-update|--rigid-update)
+        _arg_rigid_update="on"
+        test "${1:0:5}" = "--no-" && _arg_rigid_update="off"
+        ;;
+      --sharpen-type)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
+        shift
+        ;;
+      --sharpen-type=*)
+        _arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
         ;;
       --masks)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
@@ -211,14 +218,6 @@ parse_commandline()
         _arg_mask_extract="on"
         test "${1:0:5}" = "--no-" && _arg_mask_extract="off"
         ;;
-      --sharpen-type)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
-        shift
-        ;;
-      --sharpen-type=*)
-        _arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
-        ;;
       --stages)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
         _arg_stages+=("$2")
@@ -226,6 +225,14 @@ parse_commandline()
         ;;
       --stages=*)
         _arg_stages+=("${_key##--stages=}")
+        ;;
+      --no-debug|--debug)
+        _arg_debug="on"
+        test "${1:0:5}" = "--no-" && _arg_debug="off"
+        ;;
+      --no-dry-run|--dry-run)
+        _arg_dry_run="on"
+        test "${1:0:5}" = "--no-" && _arg_dry_run="off"
         ;;
       *)
         _last_positional="$1"
@@ -337,6 +344,12 @@ else
   _arg_float=""
 fi
 
+# Include rigid component in affine when updating template
+if [[ ${_arg_rigid_update} == "on" ]]; then
+  AVERAGE_AFFINE_PROGRAM="AverageAffineTransform"
+else
+  AVERAGE_AFFINE_PROGRAM="AverageAffineTransformNoRigid"
+fi
 
 # If no starting target is supplied, create one
 if [[ ${_arg_starting_target} == "none" ]]; then
@@ -371,8 +384,6 @@ else
   last_round_job=""
 fi
 
-#AVERAGE_AFFINE_PROGRAM="AverageAffineTransform"
-AVERAGE_AFFINE_PROGRAM="AverageAffineTransformNoRigid"
 
 # Looping over different stages of modelbuilding
 for reg_type in "${_arg_stages[@]}"; do
