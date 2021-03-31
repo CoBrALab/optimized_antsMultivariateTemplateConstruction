@@ -434,7 +434,7 @@ for reg_type in "${_arg_stages[@]}"; do
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           else
             echo antsRegistration_affine_SyN.sh --clobber \
-              ${_arg_float} \
+              ${_arg_float} ${_arg_fast} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
