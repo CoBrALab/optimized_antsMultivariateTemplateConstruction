@@ -16,11 +16,12 @@
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
 # ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
 # ARG_OPTIONAL_REPEATED([stages],[],[Stages of modelbuild used],['rigid' 'similarity' 'affine' 'nlin'])
-# ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (resamples, linear registrations, and averaging)],[00:15:00])
-# ARG_OPTIONAL_SINGLE([walltime-long],[],[Walltime for long running stages (nonlinear registration)],[2:00:00])
+# ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:15:00])
+# ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:30:00])
+# ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[2:30:00])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
-# ARG_POSITIONAL_INF([inputs],[list of input files],[1])
+# ARG_POSITIONAL_INF([inputs],[Input text files, one line per input, one file per spectra],[1])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
 # needed because of Argbash --> m4_ignore([
@@ -87,7 +88,8 @@ _arg_masks=
 _arg_mask_extract="off"
 _arg_stages=('rigid' 'similarity' 'affine' 'nlin')
 _arg_walltime_short="00:15:00"
-_arg_walltime_long="2:00:00"
+_arg_walltime_linear="0:30:00"
+_arg_walltime_nonlinear="2:30:00"
 _arg_debug="off"
 _arg_dry_run="off"
 
@@ -95,7 +97,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch and optimal registration pyramid based re-implementaiton fo antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-long <arg>] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: list of input files"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -114,8 +116,9 @@ print_help()
   printf '\t%s' "--stages: Stages of modelbuild used (default array elements:"
   printf " '%s'" 'rigid' 'similarity' 'affine' 'nlin'
   printf ')\n'
-  printf '\t%s\n' "--walltime-short: Walltime for short running stages (resamples, linear registrations, and averaging) (default: '00:15:00')"
-  printf '\t%s\n' "--walltime-long: Walltime for long running stages (nonlinear registration) (default: '2:00:00')"
+  printf '\t%s\n' "--walltime-short: Walltime for short running stages (default: '00:15:00')"
+  printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:30:00')"
+  printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '2:30:00')"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
@@ -240,13 +243,21 @@ parse_commandline()
       --walltime-short=*)
         _arg_walltime_short="${_key##--walltime-short=}"
         ;;
-      --walltime-long)
+      --walltime-linear)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_walltime_long="$2"
+        _arg_walltime_linear="$2"
         shift
         ;;
-      --walltime-long=*)
-        _arg_walltime_long="${_key##--walltime-long=}"
+      --walltime-linear=*)
+        _arg_walltime_linear="${_key##--walltime-linear=}"
+        ;;
+      --walltime-nonlinear)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_walltime_nonlinear="$2"
+        shift
+        ;;
+      --walltime-nonlinear=*)
+        _arg_walltime_nonlinear="${_key##--walltime-nonlinear=}"
         ;;
       --no-debug|--debug)
         _arg_debug="on"
@@ -406,7 +417,7 @@ else
   last_round_job=""
 fi
 
-walltime_reg=${_arg_walltime_short}
+walltime_reg=${_arg_walltime_linear}
 
 # Looping over different stages of modelbuilding
 for reg_type in "${_arg_stages[@]}"; do
@@ -445,7 +456,7 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) ]]; then
           if [[ ${reg_type} != "nlin" ]]; then
-            walltime_reg=${_arg_walltime_short}
+            walltime_reg=${_arg_walltime_linear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} \
               --skip-nonlinear --linear-type ${reg_type} ${_arg_fast} \
@@ -457,7 +468,7 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           else
-            walltime_reg=${_arg_walltime_long}
+            walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
