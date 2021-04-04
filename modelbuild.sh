@@ -4,7 +4,7 @@
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping],[0.25])
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target],[none])
 # ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target],[])
-# ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[3])
+# ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[4])
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements)],[])
 # ARG_OPTIONAL_BOOLEAN([fast],[],[Run SyN registration with Mattes instead of CC],[])
@@ -76,7 +76,7 @@ _arg_output_dir="output"
 _arg_gradient_step="0.25"
 _arg_starting_target="none"
 _arg_starting_target_mask=
-_arg_iterations="3"
+_arg_iterations="4"
 _arg_convergence="1e-7"
 _arg_float="off"
 _arg_fast="off"
@@ -102,7 +102,7 @@ print_help()
   printf '\t%s\n' "--gradient-step: Gradient scaling step during template warping (default: '0.25')"
   printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target (default: 'none')"
   printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
-  printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '3')"
+  printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '4')"
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
   printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
