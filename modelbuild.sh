@@ -593,8 +593,8 @@ for reg_type in "${_arg_stages[@]}"; do
             0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
-          # Scale warp average by the gradient step
-          echo MultiplyImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz ${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
+          # Scale warp average by the gradient step (note the gradient step is negative!!)
+          echo MultiplyImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz -${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Apply the inverse affine to the scaled warp
