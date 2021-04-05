@@ -549,9 +549,12 @@ for reg_type in "${_arg_stages[@]}"; do
           --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* \
           --chunksize 0 \
           ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
-        qbatch --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
-          --depend modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
-          -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
+        #Need a special test here in case jobfile is empty
+        if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage ]]; then
+          qbatch --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
+            --depend modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
+            -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
+        fi
       fi
 
       rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
