@@ -455,7 +455,8 @@ for reg_type in "${_arg_stages[@]}"; do
           bootstrap=""
         fi
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) ]]; then
-          if [[ ${reg_type} != "nlin" ]]; then
+          if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
+            #Linear stages of registration
             walltime_reg=${_arg_walltime_linear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} \
@@ -467,7 +468,8 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_inputs[${j}]} ${target} \
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
-          else
+          elif [[ ${reg_type} == "nlin" ]]; then
+            #Full regisration affine + nlin
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
@@ -478,11 +480,23 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_inputs[${j}]} ${target} \
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
+          else
+            #Non-linear only
+            walltime_reg=${_arg_walltime_nonlinear}
+            echo antsRegistration_affine_SyN.sh --clobber \
+              ${_arg_float} ${_arg_fast} \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
+              ${_arg_mask_extract} ${_mask} \
+              --skip-linear \
+              --convergence ${_arg_convergence} \
+              ${_arg_inputs[${j}]} ${target} \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
+              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           fi
         fi
         # If input masks were provided, resample them using the registration
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) && -s ${_arg_masks[${j}]} ]]; then
-          if [[ ${reg_type} != "nlin" ]]; then
+          if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
             echo antsApplyTransforms -d 3 ${_arg_float} \
               -i ${_arg_masks[${j}]} \
               -n GenericLabel \
@@ -598,7 +612,7 @@ for reg_type in "${_arg_stages[@]}"; do
           >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         # Now we update the template shape using the same steps as the original code
-        if [[ ${reg_type} == "nlin" ]]; then
+        if [[ ${reg_type} == "nlin" || ${reg_type} == "nlin-only"  ]]; then
           # Average all the warp transforms
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
             0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
