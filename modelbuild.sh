@@ -389,11 +389,11 @@ if [[ ${_arg_starting_target} == "none" ]]; then
         echo AverageImages 3 ${_arg_output_dir}/startingtarget.nii.gz 0 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
         ;;
       normmean)
-        AverageImages 3 ${_arg_output_dir}/startingtarget.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        echo AverageImages 3 ${_arg_output_dir}/startingtarget.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
         ;;
       median)
         printf '%s\n' "${_arg_inputs[@]}" > ${_arg_output_dir}/medianlist.txt
-        ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/startingtarget.nii.gz 0 > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/startingtarget.nii.gz 0 > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
         ;;
     esac
 
