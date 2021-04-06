@@ -1,5 +1,5 @@
 #!/bin/bash
-# ARG_HELP([A qbatch and optimal registration pyramid based re-implementaiton fo antsMultivariateTemplateConstruction2.sh])
+# ARG_HELP([A qbatch and optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping],[0.25])
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target],[none])
