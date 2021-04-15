@@ -417,7 +417,7 @@ fi
 walltime_reg=${_arg_walltime_linear}
 
 #Convert comma-seperated options into array
-readarray -td, _arg_stages <<<"${_arg_stages},"; unset '_arg_stages[-1]'
+IFS=',' read -r -a _arg_stages <<< ${_arg_stages}
 
 # Looping over different stages of modelbuilding
 for reg_type in "${_arg_stages[@]}"; do
