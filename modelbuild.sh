@@ -323,6 +323,14 @@ set -euo pipefail
 # Use a sharpening filter on the adjusted template to enhance edges.
 # Go back to 1.
 
+#Add handler for failure to show where things went wrong
+failure() {
+    local lineno=${1}
+    local msg=${2}
+    echo "Failed at ${lineno}: ${msg}"
+}
+trap 'failure ${LINENO} "$BASH_COMMAND"' ERR
+
 function run_smart {
   #Function runs the command it wraps if the file does not exist
   if [[ ! -s "$1" ]]; then
