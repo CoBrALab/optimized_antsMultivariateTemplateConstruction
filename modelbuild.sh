@@ -414,7 +414,8 @@ if [[ ${_arg_starting_target} == "none" ]]; then
     fi
 
     last_round_job="--depend modelbuild_${_datetime}_initialaverage"
-
+  else
+    last_round_job=""
   fi
   target=${_arg_output_dir}/startingtarget.nii.gz
 else
