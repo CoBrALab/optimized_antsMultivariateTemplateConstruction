@@ -8,9 +8,10 @@
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements)],[])
 # ARG_OPTIONAL_BOOLEAN([fast],[],[Run SyN registration with Mattes instead of CC],[])
-# ARG_OPTIONAL_SINGLE([average-type],[],[Type of averaging to apply during modelbuild],[normmean])
+# ARG_OPTIONAL_SINGLE([average-type],[],[Type of averaging to apply during modelbuild],[mean])
+# ARG_OPTIONAL_BOOLEAN([average-norm],[],[Whether to normalize each image by their mean before evaluating average.],[])
 # ARG_OPTIONAL_BOOLEAN([rigid-update],[],[Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation)],[])
-# ARG_TYPE_GROUP_SET([averagetype],[AVERAGE],[average-type],[mean,median,normmean])
+# ARG_TYPE_GROUP_SET([averagetype],[AVERAGE],[average-type],[mean,median,trimmed_mean,huber])
 # ARG_OPTIONAL_SINGLE([sharpen-type],[],[Type of sharpening applied to average during modelbuild],[unsharp])
 # ARG_TYPE_GROUP_SET([sharptypetype],[SHARPEN],[sharpen-type],[none,laplacian,unsharp])
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
@@ -43,12 +44,12 @@ die()
 
 averagetype()
 {
-	local _allowed=("mean" "median" "normmean") _seeking="$1"
+	local _allowed=("mean" "median" "trimmed_mean" "huber") _seeking="$1"
 	for element in "${_allowed[@]}"
 	do
 		test "$element" = "$_seeking" && echo "$element" && return 0
 	done
-	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
+	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median', 'trimmed_mean' and 'huber'" 4
 }
 
 
@@ -82,7 +83,8 @@ _arg_iterations="4"
 _arg_convergence="1e-7"
 _arg_float="off"
 _arg_fast="off"
-_arg_average_type="normmean"
+_arg_average_type="mean"
+_arg_average_norm="off"
 _arg_rigid_update="off"
 _arg_sharpen_type="unsharp"
 _arg_masks=
@@ -99,7 +101,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch and optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)average-norm] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -110,7 +112,8 @@ print_help()
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
   printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
-  printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')"
+  printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median', 'trimmed_mean' and 'huber' (default: 'mean')"
+  printf '\t%s\n' "--average-norm, --no-average-norm: Whether to normalize each image by their mean before evaluating average. (off by default)"
   printf '\t%s\n' "--rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)"
   printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
@@ -203,6 +206,10 @@ parse_commandline()
         ;;
       --average-type=*)
         _arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
+        ;;
+      --no-average-norm|--average-norm)
+        _arg_average_norm="on"
+        test "${1:0:5}" = "--no-" && _arg_average_norm="off"
         ;;
       --no-rigid-update|--rigid-update)
         _arg_rigid_update="on"
@@ -365,6 +372,9 @@ else
   mapfile -t _arg_masks < ${_arg_masks}
 fi
 
+# get path to script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
 # If target mask is specified use it
 target_mask=${_arg_starting_target_mask}
 
@@ -403,21 +413,18 @@ else
   _arg_block=""
 fi
 
+# Enable normalization by mean during average estimation
+if [[ ${_arg_average_norm} == "on" ]]; then
+  _arg_average_norm="--normalize"
+else
+  _arg_average_norm=""
+fi
+
 # If no starting target is supplied, create one
 if [[ ${_arg_starting_target} == "none" ]]; then
   if [[ ! -s ${_arg_output_dir}/startingtarget.nii.gz ]]; then
-    case ${_arg_average_type} in
-      mean)
-        echo AverageImages 3 ${_arg_output_dir}/startingtarget.nii.gz 0 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-        ;;
-      normmean)
-        echo AverageImages 3 ${_arg_output_dir}/startingtarget.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-        ;;
-      median)
-        printf '%s\n' "${_arg_inputs[@]}" > ${_arg_output_dir}/medianlist.txt
-        echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/startingtarget.nii.gz 0 > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-        ;;
-    esac
+    # aligns the images based on COM and creates a template from their average
+    echo ${SCRIPT_DIR}/make-dumb-average.sh ${_arg_output_dir}/startingtarget.nii.gz ${_arg_average_type} "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
 
     if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
       cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage
@@ -589,23 +596,9 @@ for reg_type in "${_arg_stages[@]}"; do
         echo "set -euo pipefail" >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         # Averaging
-        case ${_arg_average_type} in
-          mean)
-            echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
-          normmean)
-            echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
-          median)
-            for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done > ${_arg_output_dir}/medianlist.txt
-            echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0 \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
-        esac
+        echo ${SCRIPT_DIR}/get_average.py -o ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz ${_arg_average_norm} --image_type image --method ${_arg_average_type} \
+          --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
+          >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         # Shape updating
         case ${_arg_sharpen_type} in
@@ -640,8 +633,8 @@ for reg_type in "${_arg_stages[@]}"; do
         # Now we update the template shape using the same steps as the original code
         if [[ ${reg_type} == "nlin" || ${reg_type} == "nlin-only"  ]]; then
           # Average all the warp transforms
-          echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
-            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
+          echo ${SCRIPT_DIR}/get_average.py -o ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz --image_type warp --method ${_arg_average_type} \
+            --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
             >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Scale warp average by the gradient step (note the gradient step is negative!!)
