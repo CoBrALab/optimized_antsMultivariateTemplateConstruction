@@ -7,12 +7,13 @@ quick_com_align() {
   fixed=$2
   output=$3
 
-  antsAI -d 3 --convergence 0 --verbose 1 -m Mattes[${fixed},${moving},32,None] -o ${tmpdir2}/transform.mat -t Rigid
+  antsRegistration --dimensionality 3 --verbose --minc --float 0 --output [ ${tmpdir2}/COM_ ] --use-histogram-matching 0 \
+   --initial-moving-transform [${fixed},${moving},1] --transform Translation[0.5] \
+   --metric Mattes[${fixed},${moving},1,32,None] -c 0 -s 0 -f 1
 
-  antsApplyTransforms -d 3 -r ${fixed} -i ${moving} -t ${tmpdir2}/transform.mat -o ${output} --verbose
+  antsApplyTransforms -d 3 -r ${fixed} -i ${moving} -t ${tmpdir2}/COM_0_GenericAffine.xfm -o ${output} --verbose
 
   rm -rf ${tmpdir2}
-
 
 }
 
