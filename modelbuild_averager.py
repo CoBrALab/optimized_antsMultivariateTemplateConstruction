@@ -46,9 +46,9 @@ if __name__ == "__main__":
     # takes a average out of the array values from a list of Niftis
     array_list = []
     for file in opts.file_list:
-        if (opts.image_type=='warp' or opts.image_type=='image') and '.nii' in file:
+        if os.path.isfile(file) and (opts.image_type=='warp' or opts.image_type=='image'):
             array = sitk.GetArrayFromImage(sitk.ReadImage(file))
-        elif opts.image_type=='affine' and '.mat' in file:
+        elif os.path.isfile(file) and opts.image_type=='affine':
             transform = sitk.ReadTransform(file)
             array = np.array(transform.GetParameters())
         else:
