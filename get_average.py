@@ -5,29 +5,6 @@ import numpy as np
 import SimpleITK as sitk
 
 
-def get_average_from_arrays(array_list,normalize = False, method='mean'): # creates a average (i.e.mean, median, trimmed mean or huber estimator) out of a list of arrays
-    shape = array_list[0].shape
-    concat_array = array_list[0].flatten()[np.newaxis,:]
-    for array in array_list[1:]:
-        array = array.flatten()[np.newaxis,:]
-        if normalize: # divide the image values by its mean
-            array /= array.mean()
-        concat_array = np.concatenate((concat_array,array),axis=0)
-
-    if method == 'mean':
-        average = np.mean(concat_array, axis=0)
-    elif method == 'median':
-        average = np.median(concat_array,axis=0)
-    elif method == 'trimmed_mean':
-        from scipy import stats
-        # takes off 15% of values at both end
-        average = stats.trim_mean(concat_array, 0.15, axis=0)
-    elif method == 'huber':
-        import statsmodels.api as sm
-        average = sm.robust.scale.huber(concat_array)
-    return average.reshape(shape)
-
-
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-o", "--output", type=str,
@@ -57,18 +34,41 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     output = os.path.abspath(opts.output)
 
+    if len(opts.file_list)==1:
+        print("ONLY ONE INPUT PROVIDED TO --file_list. THE OUTPUT IS THE INPUT.")
+        sitk.WriteImage(sitk.ReadImage(opts.file_list[0]), output)
+        quit()
 
     # takes a average out of the array values from a list of Niftis
     array_list = []
     for file in opts.file_list:
         if (opts.image_type=='warp' or opts.image_type=='image') and '.nii' in file:
-            array_list.append(sitk.GetArrayFromImage(sitk.ReadImage(file)))
+            array = sitk.GetArrayFromImage(sitk.ReadImage(file))
         elif opts.image_type=='affine' and '.mat' in file:
             transform = sitk.ReadTransform(file)
-            array_list.append(np.array(transform.GetParameters()))
+            array = np.array(transform.GetParameters())
         else:
             continue
-    average = get_average_from_arrays(array_list, normalize=opts.normalize, method=opts.method)
+        shape = array.shape # we assume all inputs have the same shape
+        array = array.flatten()
+        if opts.normalize: # divide the image values by its mean
+            array /= array.mean()
+        array_list.append(array)
+
+    concat_array = np.array(array_list)
+    if opts.method == 'mean':
+        average = np.mean(concat_array, axis=0)
+    elif opts.method == 'median':
+        average = np.median(concat_array,axis=0)
+    elif opts.method == 'trimmed_mean':
+        from scipy import stats
+        # takes off 15% of values at both end
+        average = stats.trim_mean(concat_array, 0.15, axis=0)
+    elif opts.method == 'huber':
+        import statsmodels.api as sm
+        average = sm.robust.scale.huber(concat_array)
+
+    average = average.reshape(shape)
 
     if opts.image_type=='image':
         average_img = sitk.GetImageFromArray(average, isVector=False)
