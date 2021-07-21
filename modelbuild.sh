@@ -434,7 +434,8 @@ fi
 # If no starting target is supplied, create one
 if [[ ${_arg_starting_target} == "none" ]]; then
   if [[ ! -s ${_arg_output_dir}/startingtarget.nii.gz ]]; then
-    echo AverageImages 3 ${_arg_output_dir}/startingtarget.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+    # aligns the images based on COM and creates a template from their average
+    echo ${SCRIPT_DIR}/make-dumb-average.sh ${_arg_output_dir}/startingtarget.nii.gz ${_arg_average_type} ${_arg_trim_percent} "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
 
     if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
       cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage
