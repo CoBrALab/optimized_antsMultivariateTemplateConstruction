@@ -1,5 +1,5 @@
 #!/bin/bash
-# ARG_HELP([A qbatch and optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
+# ARG_HELP([A qbatch and optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping],[0.25])
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target],[none])
@@ -15,7 +15,7 @@
 # ARG_TYPE_GROUP_SET([sharptypetype],[SHARPEN],[sharpen-type],[none,laplacian,unsharp])
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
 # ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
-# ARG_OPTIONAL_SINGLE([stages],[],[Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only')],[rigid,similarity,affine,nlin])
+# ARG_OPTIONAL_SINGLE([stages],[],[Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting],[rigid,similarity,affine,nlin])
 # ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:15:00])
 # ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:30:00])
 # ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[2:30:00])
@@ -98,7 +98,7 @@ _arg_dry_run="off"
 
 print_help()
 {
-  printf '%s\n' "A qbatch and optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
+  printf '%s\n' "A qbatch and optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
@@ -115,7 +115,7 @@ print_help()
   printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
   printf '\t%s\n' "--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)"
-  printf '\t%s\n' "--stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only') (default: 'rigid,similarity,affine,nlin')"
+  printf '\t%s\n' "--stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')"
   printf '\t%s\n' "--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:15:00')"
   printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:30:00')"
   printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '2:30:00')"
@@ -445,9 +445,11 @@ IFS=',' read -r -a _arg_stages <<< ${_arg_stages}
 # Looping over different stages of modelbuilding
 for reg_type in "${_arg_stages[@]}"; do
 
+  stage_iterations=$(grep -E -o '[0-9]+' <<< ${reg_type} || echo ${_arg_iterations})
+  reg_type=$(sed -r 's/\[[0-9]+\]//g' <<< ${reg_type})
   i=0
 
-  while ((i < _arg_iterations)); do
+  while ((i < stage_iterations)); do
 
     if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_shapeupdate.nii.gz ]]; then
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
