@@ -7,15 +7,17 @@ differing in some of the implementation mechanisms.
 ## Differences
 
 Changes made to pipeline flow which should not affect final outcome:
+
 - File-presence based state tracking to allow for resume
 - Logging of all commands run
 - Integration of [qbatch](https://github.com/pipitone/qbatch) for local and cluster
 parallelism
 - complete computation of work graph before job submission
 - nested directory hierarchy for organization of files
-- no overwriting of intermediate files allowing for tracibility of steps
+- no overwriting of intermediate files allowing for traceability of steps
 
 Changes which are expected to affect final outcome:
+
 - Registration with [`antsRegistration_affine_SyN.sh`](https://github.com/CoBrALab/minc-toolkit-extras/blob/master/antsRegistration_affine_SyN.sh)
 and driven by [`ants_generate_iterations.py`](https://github.com/CoBrALab/minc-toolkit-extras/blob/master/ants_generate_iterations.py)
   - optimized registration scale pyramids based on image and voxel size
@@ -45,6 +47,7 @@ for running commands locally or with cluster integration.
 
 The following are features missing compared to `antsMultivariateTemplateConstruction2.sh`
 some of which will be added on a interest basis:
+
 - multispectral registration
   - modality weights
 - change non-linear transform type
@@ -58,41 +61,44 @@ some of which will be added on a interest basis:
 
 Example help, always check `./modelbuild.sh --help` in case this document has not
 been updated
+
 ```bash
-$ ./modelbuild.sh --help
-A qbatch and optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
+A qbatch and optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh
 Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
-      	<inputs>: Input text files, one line per input, one file per spectra
-      	-h, --help: Prints help
-      	--output-dir: Output directory for modelbuild (default: 'output')
-      	--gradient-step: Gradient scaling step during template warping (default: '0.25')
-      	--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target (default: 'none')
-      	--starting-target-mask: Mask for starting target (no default)
-      	--iterations: Number of iterations of model building per stage (default: '4')
-      	--convergence: Convergence limit during registration calls (default: '1e-7')
-      	--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)
-      	--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)
-      	--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')
-      	--rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)
-      	--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')
-      	--masks: File containing mask filenames, one file per line (no default)
-      	--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)
-      	--stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only') (default: 'rigid,similarity,affine,nlin')
-      	--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
-      	--walltime-linear: Walltime for linear registration stages (default: '0:30:00')
-      	--walltime-nonlinear: Walltime for nonlinear registration stages (default: '2:30:00')
-      	--block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
-      	--debug, --no-debug: Debug mode, print all commands to stdout (off by default)
-      	--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
+        <inputs>: Input text files, one line per input, one file per spectra
+        -h, --help: Prints help
+        --output-dir: Output directory for modelbuild (default: 'output')
+        --gradient-step: Gradient scaling step during template warping (default: '0.25')
+        --starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average all subjects is constructed as a starting target (default: 'none')
+        --starting-target-mask: Mask for starting target (no default)
+        --iterations: Number of iterations of model building per stage (default: '4')
+        --convergence: Convergence limit during registration calls (default: '1e-7')
+        --float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)
+        --fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)
+        --average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')
+        --rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)
+        --sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')
+        --masks: File containing mask filenames, one file per line (no default)
+        --mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)
+        --stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')
+        --walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
+        --walltime-linear: Walltime for linear registration stages (default: '0:30:00')
+        --walltime-nonlinear: Walltime for nonlinear registration stages (default: '2:30:00')
+        --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
+        --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
+        --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
+
 ```
 
 Minimal run command, assuming an input text file `inputs.txt` containing one line
 per path to an input file
+
 ```
 $ ./modelbuild.sh input.txt
 ```
 
 ## Output directory structure
+
 ```bash
 output/
 ├── jobs
