@@ -1,5 +1,5 @@
 #!/bin/bash
-# ARG_HELP([A qbatch and optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh])
+# ARG_HELP([A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping],[0.25])
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target],[none])
@@ -100,7 +100,11 @@ _arg_dry_run="off"
 
 print_help()
 {
+<<<<<<< HEAD
   printf '%s\n' "A qbatch and optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh"
+=======
+  printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
+>>>>>>> 051e984 (Rearrange com initialization code)
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
@@ -427,6 +431,17 @@ if [[ ${_arg_starting_target} == "none" ]]; then
           echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/initialaverage/startingtarget.nii.gz 0 > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
           ;;
       esac
+
+      if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
+        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+      fi
+
+      if [[ ${_arg_dry_run} == "off" ]]; then
+        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+      fi
+
+      last_round_job="--depend modelbuild_${_datetime}_initialaverage"
+
     else
       # Bootstrap COM alignment with a normalized mean
       echo AverageImages 3 ${_arg_output_dir}/initialaverage/startingtarget_0.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
@@ -435,72 +450,67 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
       echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/startingtarget_0.nii.gz ${_arg_output_dir}/initialaverage/startingtarget_0_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
       echo mv -f ${_arg_output_dir}/initialaverage/startingtarget_0_recrop.nii.gz ${_arg_output_dir}/initialaverage/startingtarget_0.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
+
+      if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
+        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
+      fi
+
+      if [[ ${_arg_dry_run} == "off" ]]; then
+        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_0 -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
+      fi
+
       # Center-of-mass align the files onto the average, create an average and repeat
-      for loop in 1 2; do
+      for round in 1 2; do
         for file in "${_arg_inputs[@]}"; do
           echo antsAI -d 3 --convergence 0 \
-            -m Mattes[${_arg_output_dir}/initialaverage/startingtarget_$((loop - 1)).nii.gz,${file},32,None] \
+            -m Mattes[${_arg_output_dir}/initialaverage/startingtarget_$((round - 1)).nii.gz,${file},32,None] \
             -o ${_arg_output_dir}/initialaverage/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
-            -t AlignCentersOfMass >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_${loop}
+            -t AlignCentersOfMass >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_${round}
         done
 
         for file in "${_arg_inputs[@]}"; do
-          echo antsApplyTransforms -d 3 -i ${file} -r ${_arg_output_dir}/initialaverage/startingtarget_$((loop - 1)).nii.gz \
+          echo antsApplyTransforms -d 3 -i ${file} -r ${_arg_output_dir}/initialaverage/startingtarget_$((round - 1)).nii.gz \
             -t ${_arg_output_dir}/initialaverage/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
-            -o ${_arg_output_dir}/initialaverage/$(basename ${file}) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_${loop}
+            -o ${_arg_output_dir}/initialaverage/$(basename ${file}) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_${round}
         done
 
         case ${_arg_average_type} in
           mean)
-            echo AverageImages 3 ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz 0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
+            echo AverageImages 3 ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz 0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
             ;;
           normmean)
-            echo AverageImages 3 ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz 2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
+            echo AverageImages 3 ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz 2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
             ;;
           median)
             for j in "${!_arg_inputs[@]}"; do echo "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]})"; done > ${_arg_output_dir}/medianlist.txt
-            echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
+            echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
             ;;
         esac
-      echo ImageMath 3 ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz PadImage ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
-      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz Otsu 4 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
-      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
-      echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz ${_arg_output_dir}/initialaverage/startingtarget_${loop}_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
-      echo mv -f ${_arg_output_dir}/initialaverage/startingtarget_${loop}_recrop.nii.gz ${_arg_output_dir}/initialaverage/startingtarget_${loop}.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${loop}
+
+        echo ImageMath 3 ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz PadImage ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz Otsu 4 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz ${_arg_output_dir}/initialaverage/startingtarget_${round}_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        echo mv -f ${_arg_output_dir}/initialaverage/startingtarget_${round}_recrop.nii.gz ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        if [[ ${round} == 2 ]]; then
+          echo cp ${_arg_output_dir}/initialaverage/startingtarget_${round}.nii.gz ${_arg_output_dir}/initialaverage/startingtarget.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        fi
+
+        if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
+          cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_${round}
+          cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_${round}
+          cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        fi
+
+        if [[ ${_arg_dry_run} == "off" ]]; then
+          qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_reg_${round} --depend modelbuild_${_datetime}_initialaverage_$((round - 1)) ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_${round}
+          qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_resample_${round} --depend modelbuild_${_datetime}_initialaverage_reg_${round} ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_${round}
+          qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_${round} --depend modelbuild_${_datetime}_initialaverage_resample_${round} -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_${round}
+        fi
 
       done
-        echo cp ${_arg_output_dir}/initialaverage/startingtarget_2.nii.gz ${_arg_output_dir}/initialaverage/startingtarget.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_2
+      last_round_job="--depend modelbuild_${_datetime}_initialaverage_2"
     fi
-
-    if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-      if [[ ${_arg_com_initialize} == "off" ]]; then
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-      else
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_1
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_1
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_1
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_2
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_2
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_2
-      fi
-    fi
-
-    if [[ ${_arg_dry_run} == "off" ]]; then
-      if [[ ${_arg_com_initialize} == "off" ]]; then
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-      else
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_0 -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_0
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_reg_1 --depend modelbuild_${_datetime}_initialaverage_0 ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_1
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_resample_1 --depend modelbuild_${_datetime}_initialaverage_reg_1 ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_1
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_1 --depend modelbuild_${_datetime}_initialaverage_resample_1 -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_1
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_reg_2 --depend modelbuild_${_datetime}_initialaverage_1 ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_2
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_resample_2 --depend modelbuild_${_datetime}_initialaverage_reg_2 ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_2
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_2 --depend modelbuild_${_datetime}_initialaverage_resample_2 -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_2
-      fi
-    fi
-
-    last_round_job="--depend modelbuild_${_datetime}_initialaverage"
   else
     last_round_job=""
   fi
