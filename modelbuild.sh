@@ -515,8 +515,6 @@ else
   last_round_job=""
 fi
 
-exit
-
 walltime_reg=${_arg_walltime_linear}
 
 #Convert comma-seperated options into array
