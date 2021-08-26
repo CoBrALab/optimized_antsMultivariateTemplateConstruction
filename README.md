@@ -66,7 +66,7 @@ been updated
 ```bash
 $ ./modelbuild.sh --help
 A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
-Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text files, one line per input, one file per spectra
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
@@ -74,6 +74,7 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target (default: 'none')
         --starting-target-mask: Mask for starting target (no default)
         --com-initialize, --no-com-initialize: When a starting target is not provided, align all inputs using their center-of-mass before averaging (on by default)
+        --starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample this average to a target resolution MxNxO before modelbuild (no default)
         --iterations: Number of iterations of model building per stage (default: '4')
         --convergence: Convergence limit during registration calls (default: '1e-7')
         --float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)
@@ -90,13 +91,12 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
-
 ```
 
 Minimal run command, assuming an input text file `inputs.txt` containing one line
 per path to an input file
 
-```
+```bash
 $ ./modelbuild.sh input.txt
 ```
 
@@ -104,6 +104,8 @@ $ ./modelbuild.sh input.txt
 
 ```bash
 output/
+├── initialaverage
+│   ├── initialtarget.nii.gz # Generated if no starting target is supplied
 ├── jobs
 │   └── <run date/time in ISO format>
 │       ├── initialaverage
