@@ -340,6 +340,67 @@ assign_positional_args 1 "${_positionals[@]}"
 # [ <-- needed because of Argbash
 
 set -euo pipefail
+export QBATCH_SCRIPT_FOLDER="${_arg_output_dir}/qbatch/"
+
+### BASH HELPER FUNCTIONS ###
+# Stolen from https://github.com/kvz/bash3boilerplate
+
+if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
+  LOG_LEVEL=7
+else
+  LOG_LEVEL=6
+fi
+
+
+function __b3bp_log () {
+  local log_level="${1}"
+  shift
+
+  # shellcheck disable=SC2034
+  local color_debug="\\x1b[35m"
+  # shellcheck disable=SC2034
+  local color_info="\\x1b[32m"
+  # shellcheck disable=SC2034
+  local color_notice="\\x1b[34m"
+  # shellcheck disable=SC2034
+  local color_warning="\\x1b[33m"
+  # shellcheck disable=SC2034
+  local color_error="\\x1b[31m"
+  # shellcheck disable=SC2034
+  local color_critical="\\x1b[1;31m"
+  # shellcheck disable=SC2034
+  local color_alert="\\x1b[1;37;41m"
+  # shellcheck disable=SC2034
+  local color_emergency="\\x1b[1;4;5;37;41m"
+
+  local colorvar="color_${log_level}"
+
+  local color="${!colorvar:-${color_error}}"
+  local color_reset="\\x1b[0m"
+
+  if [[ "${NO_COLOR:-}" = "true" ]] || { [[ "${TERM:-}" != "xterm"* ]] && [[ "${TERM:-}" != "screen"* ]]; } || [[ ! -t 2 ]]; then
+    if [[ "${NO_COLOR:-}" != "false" ]]; then
+      # Don't use colors on pipes or non-recognized terminals
+      color=""; color_reset=""
+    fi
+  fi
+
+  # all remaining arguments are to be printed
+  local log_line=""
+
+  while IFS=$'\n' read -r log_line; do
+    echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") ${color}$(printf "[%9s]" "${log_level}")${color_reset} ${log_line}" 1>&2
+  done <<< "${@:-}"
+}
+
+function emergency () {                                __b3bp_log emergency "${@}"; exit 1; }
+function alert ()     { [[ "${LOG_LEVEL:-0}" -ge 1 ]] && __b3bp_log alert "${@}"; true; }
+function critical ()  { [[ "${LOG_LEVEL:-0}" -ge 2 ]] && __b3bp_log critical "${@}"; true; }
+function error ()     { [[ "${LOG_LEVEL:-0}" -ge 3 ]] && __b3bp_log error "${@}"; true; }
+function warning ()   { [[ "${LOG_LEVEL:-0}" -ge 4 ]] && __b3bp_log warning "${@}"; true; }
+function notice ()    { [[ "${LOG_LEVEL:-0}" -ge 5 ]] && __b3bp_log notice "${@}"; true; }
+function info ()      { [[ "${LOG_LEVEL:-0}" -ge 6 ]] && __b3bp_log info "${@}"; true; }
+function debug ()     { [[ "${LOG_LEVEL:-0}" -ge 7 ]] && __b3bp_log debug "${@}"; true; }
 
 # Register all images to the template.
 # Average all warped images to create a new template.
@@ -364,7 +425,7 @@ function run_smart {
 }
 
 # Setup a timestamp for prefixing all commands
-_datetime=$(date +%F_%H-%M-%S)
+_datetime=$(date -u +%F_%H-%M-%S-UTC)
 
 # Setup a directory which contains all commands run
 # for this invocation
@@ -426,6 +487,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
   if [[ ! -s ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ]]; then
     mkdir -p ${_arg_output_dir}/initialaverage
     if [[ ${_arg_com_initialize} == "off" ]]; then
+      info "Generating initial average of all subjects using ${_arg_average_type}"
       case ${_arg_average_type} in
         mean)
           echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz 0 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
@@ -443,17 +505,16 @@ if [[ ${_arg_starting_target} == "none" ]]; then
         echo ResampleImage 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_starting_average_resolution} 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage
       fi
 
-      if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-      fi
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
       fi
 
       last_round_job="--depend modelbuild_${_datetime}_initialaverage"
 
     else
+      info "Generating initial average of all subjects using ${_arg_average_type} and center-of-mass alignment"
       # Bootstrap COM alignment with a normalized mean
       echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       echo ImageMath 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz PadImage ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
@@ -462,13 +523,10 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
 
-      
-      if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
-      fi
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_dumb -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_dumb -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       fi
 
       # Center-of-mass align the files onto the average, create an average and repeat
@@ -510,16 +568,14 @@ if [[ ${_arg_starting_target} == "none" ]]; then
         echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       fi
 
-      if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
-        cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-      fi
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com)"
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com)"
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_reg_com --depend modelbuild_${_datetime}_initialaverage_dumb ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_resample_com --depend modelbuild_${_datetime}_initialaverage_reg_com ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_com --depend modelbuild_${_datetime}_initialaverage_resample_com -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_reg_com --depend modelbuild_${_datetime}_initialaverage_dumb ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_resample_com --depend modelbuild_${_datetime}_initialaverage_reg_com ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_com --depend modelbuild_${_datetime}_initialaverage_resample_com -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       fi
 
 
@@ -547,6 +603,7 @@ for reg_type in "${_arg_stages[@]}"; do
   i=0
 
   while ((i < stage_iterations)); do
+    info "Computing ${reg_type} stage iteration $((i + 1)) jobs"
 
     if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_shapeupdate.nii.gz ]]; then
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
@@ -658,23 +715,21 @@ for reg_type in "${_arg_stages[@]}"; do
         target_mask=""
       fi
 
-      if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-        cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
-        cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
-        cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
-      fi
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg)"
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample)"
+      debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --walltime ${walltime_reg} -N modelbuild_${_datetime}_${reg_type}_${i}_reg \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${walltime_reg} -N modelbuild_${_datetime}_${reg_type}_${i}_reg \
           ${last_round_job} \
           ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
-        qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
           --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* \
           --chunksize 0 \
           ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
-        #Need a special test here in case jobfile is empty
+        # Need a special test here in case jobfile is empty
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage ]]; then
-          qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
             -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
         fi
@@ -814,13 +869,10 @@ for reg_type in "${_arg_stages[@]}"; do
           ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
           >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
-
-        if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-          cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-        fi
+        debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate)"
 
         if [[ ${_arg_dry_run} == "off" ]]; then
-          qbatch ${_arg_block} --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_reg \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
             -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
