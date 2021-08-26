@@ -5,6 +5,7 @@
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target],[none])
 # ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target],[])
 # ARG_OPTIONAL_BOOLEAN([com-initialize],[],[When a starting target is not provided, align all inputs using their center-of-mass before averaging],[on])
+# ARG_OPTIONAL_SINGLE([starting-average-resolution],[],[If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild],[])
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[4])
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements)],[])
@@ -80,6 +81,7 @@ _arg_gradient_step="0.25"
 _arg_starting_target="none"
 _arg_starting_target_mask=
 _arg_com_initialize="on"
+_arg_starting_average_resolution=
 _arg_iterations="4"
 _arg_convergence="1e-7"
 _arg_float="off"
@@ -101,7 +103,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -109,6 +111,7 @@ print_help()
   printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target (default: 'none')"
   printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
   printf '\t%s\n' "--com-initialize, --no-com-initialize: When a starting target is not provided, align all inputs using their center-of-mass before averaging (on by default)"
+  printf '\t%s\n' "--starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample this average to a target resolution MxNxO before modelbuild (no default)"
   printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '4')"
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
@@ -178,6 +181,14 @@ parse_commandline()
       --no-com-initialize|--com-initialize)
         _arg_com_initialize="on"
         test "${1:0:5}" = "--no-" && _arg_com_initialize="off"
+        ;;
+      --starting-average-resolution)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_average_resolution="$2"
+        shift
+        ;;
+      --starting-average-resolution=*)
+        _arg_starting_average_resolution="${_key##--starting-average-resolution=}"
         ;;
       --iterations)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
@@ -428,6 +439,10 @@ if [[ ${_arg_starting_target} == "none" ]]; then
           ;;
       esac
 
+      if [[ -n ${_arg_starting_average_resolution} ]]; then
+        echo ResampleImage 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_starting_average_resolution} 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+      fi
+
       if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
         cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage
       fi
@@ -445,8 +460,9 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz Otsu 4 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
-      echo mv -f ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+      echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
 
+      
       if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
         cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       fi
@@ -488,8 +504,11 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_com_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       echo mv -f ${_arg_output_dir}/initialaverage/initialtarget_com_recrop.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-      echo cp ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-
+      if [[ -n ${_arg_starting_average_resolution} ]]; then
+        echo ResampleImage 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_starting_average_resolution} 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+      else
+        echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+      fi
 
       if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
         cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
