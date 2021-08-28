@@ -345,6 +345,13 @@ export QBATCH_SCRIPT_FOLDER="${_arg_output_dir}/qbatch/"
 ### BASH HELPER FUNCTIONS ###
 # Stolen from https://github.com/kvz/bash3boilerplate
 
+# Set magic variables for current file, directory, os, etc.
+__dir="$(cd "$(dirname "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")" && pwd)"
+__file="${__dir}/$(basename "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")"
+__base="$(basename "${__file}" .sh)"
+# shellcheck disable=SC2034,SC2015
+__invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
+
 if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
   LOG_LEVEL=7
 else
@@ -371,7 +378,7 @@ function __b3bp_log () {
   # shellcheck disable=SC2034
   local color_alert="\\x1b[1;37;41m"
   # shellcheck disable=SC2034
-  local color_emergency="\\x1b[1;4;5;37;41m"
+  local color_failure="\\x1b[1;4;5;37;41m"
 
   local colorvar="color_${log_level}"
 
@@ -393,7 +400,7 @@ function __b3bp_log () {
   done <<< "${@:-}"
 }
 
-function emergency () {                                __b3bp_log emergency "${@}"; exit 1; }
+function failure () {                                __b3bp_log failure "${@}"; exit 1; }
 function alert ()     { [[ "${LOG_LEVEL:-0}" -ge 1 ]] && __b3bp_log alert "${@}"; true; }
 function critical ()  { [[ "${LOG_LEVEL:-0}" -ge 2 ]] && __b3bp_log critical "${@}"; true; }
 function error ()     { [[ "${LOG_LEVEL:-0}" -ge 3 ]] && __b3bp_log error "${@}"; true; }
@@ -402,23 +409,17 @@ function notice ()    { [[ "${LOG_LEVEL:-0}" -ge 5 ]] && __b3bp_log notice "${@}
 function info ()      { [[ "${LOG_LEVEL:-0}" -ge 6 ]] && __b3bp_log info "${@}"; true; }
 function debug ()     { [[ "${LOG_LEVEL:-0}" -ge 7 ]] && __b3bp_log debug "${@}"; true; }
 
-# Register all images to the template.
-# Average all warped images to create a new template.
-# Average all the transforms from 1 to create a single transform.
-# Apply the transform from 3 the template to warp the template towards the true mean shape.
-# Use a sharpening filter on the adjusted template to enhance edges.
-# Go back to 1.
 
-#Add handler for failure to show where things went wrong
-failure() {
+# Add handler for failure to show where things went wrong
+failure_handler() {
     local lineno=${1}
     local msg=${2}
     echo "Failed at ${lineno}: ${msg}"
 }
-trap 'failure ${LINENO} "$BASH_COMMAND"' ERR
+trap 'failure_handler ${LINENO} "$BASH_COMMAND"' ERR
 
 function run_smart {
-  #Function runs the command it wraps if the file does not exist
+  # Function runs the command it wraps if the file does not exist
   if [[ ! -s "$1" ]]; then
     "$2"
   fi
@@ -431,8 +432,18 @@ _datetime=$(date -u +%F_%H-%M-%S-UTC)
 # for this invocation
 mkdir -p ${_arg_output_dir}/jobs/${_datetime}
 
+# Store the full command line for each run
+echo ${__invocation} > ${_arg_output_dir}/jobs/${_datetime}/invocation
+
 # Load input file into array
 mapfile -t _arg_inputs < ${_arg_inputs[0]}
+
+info "Checking input files"
+for file in "${_arg_inputs[@]}"; do
+  if [[ ! -s ${file} ]]; then
+    failure "Input file ${file} is non-existent or zero size"
+  fi
+done
 
 # Fill up array of masks
 if [[ -z ${_arg_masks} ]]; then
@@ -442,10 +453,20 @@ if [[ -z ${_arg_masks} ]]; then
   done
 else
   mapfile -t _arg_masks < ${_arg_masks}
+  info "Checking mask files"
+  for file in "${_arg_masks[@]}"; do
+    if [[ ! -s ${file} ]]; then
+      failure "Mask file ${file} is non-existent or zero size"
+    fi
+  done
 fi
 
 # If target mask is specified use it
 target_mask=${_arg_starting_target_mask}
+
+if [[ -n ${target_mask} && ! -s ${target_mask} ]]; then
+  failure "Starting target mask ${target_mask} is non-existant or zero size"
+fi
 
 # Enable fast mode in antsRegistration_affine_SyN.sh
 if [[ ${_arg_fast} == "on" ]]; then
@@ -481,6 +502,19 @@ if [[ ${_arg_block} == "on" ]]; then
 else
   _arg_block=""
 fi
+
+# Prefight check for required programs
+for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
+  ThresholdImage ExtractRegionFromImageByMask antsAI \
+  antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
+  antsRegistration_affine_SyN.sh ; do
+
+  if ! command -v ${program} &> /dev/null; then
+    failure "Required program ${program} not found!"
+  fi
+
+done
+
 
 # If no starting target is supplied, create one
 if [[ ${_arg_starting_target} == "none" ]]; then
@@ -586,6 +620,10 @@ if [[ ${_arg_starting_target} == "none" ]]; then
   fi
   target=${_arg_output_dir}/initialaverage/initialtarget.nii.gz
 else
+  info "Checking starting target"
+  if [[ ! -s ${_arg_starting_target} ]]; then
+    failure "Starting target ${_arg_starting_target} is non-existant or zero size"
+  fi
   target=${_arg_starting_target}
   last_round_job=""
 fi
@@ -615,7 +653,7 @@ for reg_type in "${_arg_stages[@]}"; do
       rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
       for j in "${!_arg_inputs[@]}"; do
 
-        #Check for existence of moving mask, if it exists, add option
+        # Check for existence of moving mask, if it exists, add option
         if [[ -s ${_arg_masks[${j}]} ]]; then
           _mask="--moving-mask ${_arg_masks[${j}]}"
         else
@@ -635,7 +673,7 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) ]]; then
           if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
-            #Linear stages of registration
+            # Linear stages of registration
             walltime_reg=${_arg_walltime_linear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} \
@@ -648,7 +686,7 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           elif [[ ${reg_type} == "nlin" ]]; then
-            #Full regisration affine + nlin
+            # Full regisration affine + nlin
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
@@ -660,7 +698,7 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
               >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           else
-            #Non-linear only
+            # Non-linear only
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
