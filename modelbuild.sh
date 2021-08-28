@@ -345,6 +345,13 @@ export QBATCH_SCRIPT_FOLDER="${_arg_output_dir}/qbatch/"
 ### BASH HELPER FUNCTIONS ###
 # Stolen from https://github.com/kvz/bash3boilerplate
 
+# Set magic variables for current file, directory, os, etc.
+__dir="$(cd "$(dirname "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")" && pwd)"
+__file="${__dir}/$(basename "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")"
+__base="$(basename "${__file}" .sh)"
+# shellcheck disable=SC2034,SC2015
+__invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
+
 if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
   LOG_LEVEL=7
 else
@@ -430,6 +437,9 @@ _datetime=$(date -u +%F_%H-%M-%S-UTC)
 # Setup a directory which contains all commands run
 # for this invocation
 mkdir -p ${_arg_output_dir}/jobs/${_datetime}
+
+# Store the full command line for each run
+echo ${__invocation} > ${_arg_output_dir}/jobs/${_datetime}/invocation
 
 # Load input file into array
 mapfile -t _arg_inputs < ${_arg_inputs[0]}
