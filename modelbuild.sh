@@ -761,10 +761,12 @@ for reg_type in "${_arg_stages[@]}"; do
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${walltime_reg} -N modelbuild_${_datetime}_${reg_type}_${i}_reg \
           ${last_round_job} \
           ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
-          --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* \
-          --chunksize 0 \
-          ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
+        if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample ]]; then
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
+            --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* \
+            --chunksize 0 \
+            ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
+        fi
         # Need a special test here in case jobfile is empty
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage ]]; then
           qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
