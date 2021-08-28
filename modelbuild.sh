@@ -18,9 +18,9 @@
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
 # ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
 # ARG_OPTIONAL_SINGLE([stages],[],[Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting],[rigid,similarity,affine,nlin])
-# ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:15:00])
-# ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:30:00])
-# ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[2:30:00])
+# ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:30:00])
+# ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:45:00])
+# ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[4:30:00])
 # ARG_OPTIONAL_BOOLEAN([block],[],[For SGE, PBS and SLURM, blocks execution until jobs are finished.],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
@@ -92,9 +92,9 @@ _arg_sharpen_type="unsharp"
 _arg_masks=
 _arg_mask_extract="off"
 _arg_stages="rigid,similarity,affine,nlin"
-_arg_walltime_short="00:15:00"
-_arg_walltime_linear="0:30:00"
-_arg_walltime_nonlinear="2:30:00"
+_arg_walltime_short="00:30:00"
+_arg_walltime_linear="0:45:00"
+_arg_walltime_nonlinear="4:30:00"
 _arg_block="off"
 _arg_debug="off"
 _arg_dry_run="off"
@@ -111,7 +111,7 @@ print_help()
   printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target (default: 'none')"
   printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
   printf '\t%s\n' "--com-initialize, --no-com-initialize: When a starting target is not provided, align all inputs using their center-of-mass before averaging (on by default)"
-  printf '\t%s\n' "--starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample this average to a target resolution MxNxO before modelbuild (no default)"
+  printf '\t%s\n' "--starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild (no default)"
   printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '4')"
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
@@ -122,9 +122,9 @@ print_help()
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
   printf '\t%s\n' "--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)"
   printf '\t%s\n' "--stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')"
-  printf '\t%s\n' "--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:15:00')"
-  printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:30:00')"
-  printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '2:30:00')"
+  printf '\t%s\n' "--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')"
+  printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:45:00')"
+  printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')"
   printf '\t%s\n' "--block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
