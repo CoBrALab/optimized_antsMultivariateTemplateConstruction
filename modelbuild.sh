@@ -32,9 +32,7 @@
 # Argbash is a bash code generator used to get arguments parsing right.
 # Argbash is FREE SOFTWARE, see https://argbash.io for more info
 
-
-die()
-{
+die() {
   local _ret="${2:-1}"
   test "${_PRINT_HELP:-no}" = yes && print_help >&2
   echo "$1" >&2
@@ -43,30 +41,23 @@ die()
 
 # validators
 
-averagetype()
-{
-	local _allowed=("mean" "median" "normmean") _seeking="$1"
-	for element in "${_allowed[@]}"
-	do
-		test "$element" = "$_seeking" && echo "$element" && return 0
-	done
-	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
+averagetype() {
+  local _allowed=("mean" "median" "normmean") _seeking="$1"
+  for element in "${_allowed[@]}"; do
+    test "$element" = "$_seeking" && echo "$element" && return 0
+  done
+  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
 }
 
-
-sharptypetype()
-{
-	local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
-	for element in "${_allowed[@]}"
-	do
-		test "$element" = "$_seeking" && echo "$element" && return 0
-	done
-	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
+sharptypetype() {
+  local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
+  for element in "${_allowed[@]}"; do
+    test "$element" = "$_seeking" && echo "$element" && return 0
+  done
+  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
 }
 
-
-begins_with_short_option()
-{
+begins_with_short_option() {
   local first_option all_short_options='h'
   first_option="${1:0:1}"
   test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
@@ -74,7 +65,7 @@ begins_with_short_option()
 
 # THE DEFAULTS INITIALIZATION - POSITIONALS
 _positionals=()
-_arg_inputs=('' )
+_arg_inputs=('')
 # THE DEFAULTS INITIALIZATION - OPTIONALS
 _arg_output_dir="output"
 _arg_gradient_step="0.25"
@@ -99,9 +90,7 @@ _arg_block="off"
 _arg_debug="off"
 _arg_dry_run="off"
 
-
-print_help()
-{
+print_help() {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
@@ -130,197 +119,188 @@ print_help()
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
 
-
-parse_commandline()
-{
+parse_commandline() {
   _positionals_count=0
-  while test $# -gt 0
-  do
+  while test $# -gt 0; do
     _key="$1"
     case "$_key" in
-      -h|--help)
-        print_help
-        exit 0
-        ;;
-      -h*)
-        print_help
-        exit 0
-        ;;
-      --output-dir)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_output_dir="$2"
-        shift
-        ;;
-      --output-dir=*)
-        _arg_output_dir="${_key##--output-dir=}"
-        ;;
-      --gradient-step)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_gradient_step="$2"
-        shift
-        ;;
-      --gradient-step=*)
-        _arg_gradient_step="${_key##--gradient-step=}"
-        ;;
-      --starting-target)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_starting_target="$2"
-        shift
-        ;;
-      --starting-target=*)
-        _arg_starting_target="${_key##--starting-target=}"
-        ;;
-      --starting-target-mask)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_starting_target_mask="$2"
-        shift
-        ;;
-      --starting-target-mask=*)
-        _arg_starting_target_mask="${_key##--starting-target-mask=}"
-        ;;
-      --no-com-initialize|--com-initialize)
-        _arg_com_initialize="on"
-        test "${1:0:5}" = "--no-" && _arg_com_initialize="off"
-        ;;
-      --starting-average-resolution)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_starting_average_resolution="$2"
-        shift
-        ;;
-      --starting-average-resolution=*)
-        _arg_starting_average_resolution="${_key##--starting-average-resolution=}"
-        ;;
-      --iterations)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_iterations="$2"
-        shift
-        ;;
-      --iterations=*)
-        _arg_iterations="${_key##--iterations=}"
-        ;;
-      --convergence)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_convergence="$2"
-        shift
-        ;;
-      --convergence=*)
-        _arg_convergence="${_key##--convergence=}"
-        ;;
-      --no-float|--float)
-        _arg_float="on"
-        test "${1:0:5}" = "--no-" && _arg_float="off"
-        ;;
-      --no-fast|--fast)
-        _arg_fast="on"
-        test "${1:0:5}" = "--no-" && _arg_fast="off"
-        ;;
-      --average-type)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_average_type="$(averagetype "$2" "average-type")" || exit 1
-        shift
-        ;;
-      --average-type=*)
-        _arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
-        ;;
-      --no-rigid-update|--rigid-update)
-        _arg_rigid_update="on"
-        test "${1:0:5}" = "--no-" && _arg_rigid_update="off"
-        ;;
-      --sharpen-type)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
-        shift
-        ;;
-      --sharpen-type=*)
-        _arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
-        ;;
-      --masks)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_masks="$2"
-        shift
-        ;;
-      --masks=*)
-        _arg_masks="${_key##--masks=}"
-        ;;
-      --no-mask-extract|--mask-extract)
-        _arg_mask_extract="on"
-        test "${1:0:5}" = "--no-" && _arg_mask_extract="off"
-        ;;
-      --stages)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_stages="$2"
-        shift
-        ;;
-      --stages=*)
-        _arg_stages="${_key##--stages=}"
-        ;;
-      --walltime-short)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_walltime_short="$2"
-        shift
-        ;;
-      --walltime-short=*)
-        _arg_walltime_short="${_key##--walltime-short=}"
-        ;;
-      --walltime-linear)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_walltime_linear="$2"
-        shift
-        ;;
-      --walltime-linear=*)
-        _arg_walltime_linear="${_key##--walltime-linear=}"
-        ;;
-      --walltime-nonlinear)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_walltime_nonlinear="$2"
-        shift
-        ;;
-      --walltime-nonlinear=*)
-        _arg_walltime_nonlinear="${_key##--walltime-nonlinear=}"
-        ;;
-      --no-block|--block)
-        _arg_block="on"
-        test "${1:0:5}" = "--no-" && _arg_block="off"
-        ;;
-      --no-debug|--debug)
-        _arg_debug="on"
-        test "${1:0:5}" = "--no-" && _arg_debug="off"
-        ;;
-      --no-dry-run|--dry-run)
-        _arg_dry_run="on"
-        test "${1:0:5}" = "--no-" && _arg_dry_run="off"
-        ;;
-      *)
-        _last_positional="$1"
-        _positionals+=("$_last_positional")
-        _positionals_count=$((_positionals_count + 1))
-        ;;
+    -h | --help)
+      print_help
+      exit 0
+      ;;
+    -h*)
+      print_help
+      exit 0
+      ;;
+    --output-dir)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_output_dir="$2"
+      shift
+      ;;
+    --output-dir=*)
+      _arg_output_dir="${_key##--output-dir=}"
+      ;;
+    --gradient-step)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_gradient_step="$2"
+      shift
+      ;;
+    --gradient-step=*)
+      _arg_gradient_step="${_key##--gradient-step=}"
+      ;;
+    --starting-target)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_starting_target="$2"
+      shift
+      ;;
+    --starting-target=*)
+      _arg_starting_target="${_key##--starting-target=}"
+      ;;
+    --starting-target-mask)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_starting_target_mask="$2"
+      shift
+      ;;
+    --starting-target-mask=*)
+      _arg_starting_target_mask="${_key##--starting-target-mask=}"
+      ;;
+    --no-com-initialize | --com-initialize)
+      _arg_com_initialize="on"
+      test "${1:0:5}" = "--no-" && _arg_com_initialize="off"
+      ;;
+    --starting-average-resolution)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_starting_average_resolution="$2"
+      shift
+      ;;
+    --starting-average-resolution=*)
+      _arg_starting_average_resolution="${_key##--starting-average-resolution=}"
+      ;;
+    --iterations)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_iterations="$2"
+      shift
+      ;;
+    --iterations=*)
+      _arg_iterations="${_key##--iterations=}"
+      ;;
+    --convergence)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_convergence="$2"
+      shift
+      ;;
+    --convergence=*)
+      _arg_convergence="${_key##--convergence=}"
+      ;;
+    --no-float | --float)
+      _arg_float="on"
+      test "${1:0:5}" = "--no-" && _arg_float="off"
+      ;;
+    --no-fast | --fast)
+      _arg_fast="on"
+      test "${1:0:5}" = "--no-" && _arg_fast="off"
+      ;;
+    --average-type)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_average_type="$(averagetype "$2" "average-type")" || exit 1
+      shift
+      ;;
+    --average-type=*)
+      _arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
+      ;;
+    --no-rigid-update | --rigid-update)
+      _arg_rigid_update="on"
+      test "${1:0:5}" = "--no-" && _arg_rigid_update="off"
+      ;;
+    --sharpen-type)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
+      shift
+      ;;
+    --sharpen-type=*)
+      _arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
+      ;;
+    --masks)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_masks="$2"
+      shift
+      ;;
+    --masks=*)
+      _arg_masks="${_key##--masks=}"
+      ;;
+    --no-mask-extract | --mask-extract)
+      _arg_mask_extract="on"
+      test "${1:0:5}" = "--no-" && _arg_mask_extract="off"
+      ;;
+    --stages)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_stages="$2"
+      shift
+      ;;
+    --stages=*)
+      _arg_stages="${_key##--stages=}"
+      ;;
+    --walltime-short)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_walltime_short="$2"
+      shift
+      ;;
+    --walltime-short=*)
+      _arg_walltime_short="${_key##--walltime-short=}"
+      ;;
+    --walltime-linear)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_walltime_linear="$2"
+      shift
+      ;;
+    --walltime-linear=*)
+      _arg_walltime_linear="${_key##--walltime-linear=}"
+      ;;
+    --walltime-nonlinear)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_walltime_nonlinear="$2"
+      shift
+      ;;
+    --walltime-nonlinear=*)
+      _arg_walltime_nonlinear="${_key##--walltime-nonlinear=}"
+      ;;
+    --no-block | --block)
+      _arg_block="on"
+      test "${1:0:5}" = "--no-" && _arg_block="off"
+      ;;
+    --no-debug | --debug)
+      _arg_debug="on"
+      test "${1:0:5}" = "--no-" && _arg_debug="off"
+      ;;
+    --no-dry-run | --dry-run)
+      _arg_dry_run="on"
+      test "${1:0:5}" = "--no-" && _arg_dry_run="off"
+      ;;
+    *)
+      _last_positional="$1"
+      _positionals+=("$_last_positional")
+      _positionals_count=$((_positionals_count + 1))
+      ;;
     esac
     shift
   done
 }
 
-
-handle_passed_args_count()
-{
+handle_passed_args_count() {
   local _required_args_string="'inputs'"
   test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
 }
 
-
-assign_positional_args()
-{
+assign_positional_args() {
   local _positional_name _shift_for=$1
   _positional_names="_arg_inputs "
   _our_args=$((${#_positionals[@]} - 1))
-  for ((ii = 0; ii < _our_args; ii++))
-  do
+  for ((ii = 0; ii < _our_args; ii++)); do
     _positional_names="$_positional_names _arg_inputs[$((ii + 1))]"
   done
 
   shift "$_shift_for"
-  for _positional_name in ${_positional_names}
-  do
+  for _positional_name in ${_positional_names}; do
     test $# -gt 0 || break
     eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an Argbash bug." 1
     shift
@@ -333,8 +313,6 @@ assign_positional_args 1 "${_positionals[@]}"
 
 # OTHER STUFF GENERATED BY Argbash
 # Validation of values
-
-
 
 ### END OF CODE GENERATED BY Argbash (sortof) ### ])
 # [ <-- needed because of Argbash
@@ -358,8 +336,7 @@ else
   LOG_LEVEL=6
 fi
 
-
-function __b3bp_log () {
+function __b3bp_log() {
   local log_level="${1}"
   shift
 
@@ -388,7 +365,8 @@ function __b3bp_log () {
   if [[ "${NO_COLOR:-}" = "true" ]] || { [[ "${TERM:-}" != "xterm"* ]] && [[ "${TERM:-}" != "screen"* ]]; } || [[ ! -t 2 ]]; then
     if [[ "${NO_COLOR:-}" != "false" ]]; then
       # Don't use colors on pipes or non-recognized terminals
-      color=""; color_reset=""
+      color=""
+      color_reset=""
     fi
   fi
 
@@ -397,24 +375,47 @@ function __b3bp_log () {
 
   while IFS=$'\n' read -r log_line; do
     echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") ${color}$(printf "[%9s]" "${log_level}")${color_reset} ${log_line}" 1>&2
-  done <<< "${@:-}"
+  done <<<"${@:-}"
 }
 
-function failure () {                                __b3bp_log failure "${@}"; exit 1; }
-function alert ()     { [[ "${LOG_LEVEL:-0}" -ge 1 ]] && __b3bp_log alert "${@}"; true; }
-function critical ()  { [[ "${LOG_LEVEL:-0}" -ge 2 ]] && __b3bp_log critical "${@}"; true; }
-function error ()     { [[ "${LOG_LEVEL:-0}" -ge 3 ]] && __b3bp_log error "${@}"; true; }
-function warning ()   { [[ "${LOG_LEVEL:-0}" -ge 4 ]] && __b3bp_log warning "${@}"; true; }
-function notice ()    { [[ "${LOG_LEVEL:-0}" -ge 5 ]] && __b3bp_log notice "${@}"; true; }
-function info ()      { [[ "${LOG_LEVEL:-0}" -ge 6 ]] && __b3bp_log info "${@}"; true; }
-function debug ()     { [[ "${LOG_LEVEL:-0}" -ge 7 ]] && __b3bp_log debug "${@}"; true; }
-
+function failure() {
+  __b3bp_log failure "${@}"
+  exit 1
+}
+function alert() {
+  [[ "${LOG_LEVEL:-0}" -ge 1 ]] && __b3bp_log alert "${@}"
+  true
+}
+function critical() {
+  [[ "${LOG_LEVEL:-0}" -ge 2 ]] && __b3bp_log critical "${@}"
+  true
+}
+function error() {
+  [[ "${LOG_LEVEL:-0}" -ge 3 ]] && __b3bp_log error "${@}"
+  true
+}
+function warning() {
+  [[ "${LOG_LEVEL:-0}" -ge 4 ]] && __b3bp_log warning "${@}"
+  true
+}
+function notice() {
+  [[ "${LOG_LEVEL:-0}" -ge 5 ]] && __b3bp_log notice "${@}"
+  true
+}
+function info() {
+  [[ "${LOG_LEVEL:-0}" -ge 6 ]] && __b3bp_log info "${@}"
+  true
+}
+function debug() {
+  [[ "${LOG_LEVEL:-0}" -ge 7 ]] && __b3bp_log debug "${@}"
+  true
+}
 
 # Add handler for failure to show where things went wrong
 failure_handler() {
-    local lineno=${1}
-    local msg=${2}
-    echo "Failed at ${lineno}: ${msg}"
+  local lineno=${1}
+  local msg=${2}
+  echo "Failed at ${lineno}: ${msg}"
 }
 trap 'failure_handler ${LINENO} "$BASH_COMMAND"' ERR
 
@@ -433,10 +434,10 @@ _datetime=$(date -u +%F_%H-%M-%S-UTC)
 mkdir -p ${_arg_output_dir}/jobs/${_datetime}
 
 # Store the full command line for each run
-echo ${__invocation} > ${_arg_output_dir}/jobs/${_datetime}/invocation
+echo ${__invocation} >${_arg_output_dir}/jobs/${_datetime}/invocation
 
 # Load input file into array
-mapfile -t _arg_inputs < ${_arg_inputs[0]}
+mapfile -t _arg_inputs <${_arg_inputs[0]}
 
 info "Checking input files"
 for file in "${_arg_inputs[@]}"; do
@@ -452,7 +453,7 @@ if [[ -z ${_arg_masks} ]]; then
     _arg_masks+=('')
   done
 else
-  mapfile -t _arg_masks < ${_arg_masks}
+  mapfile -t _arg_masks <${_arg_masks}
   info "Checking mask files"
   for file in "${_arg_masks[@]}"; do
     if [[ ! -s ${file} ]]; then
@@ -507,14 +508,13 @@ fi
 for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
   ThresholdImage ExtractRegionFromImageByMask antsAI \
   antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
-  antsRegistration_affine_SyN.sh ; do
+  antsRegistration_affine_SyN.sh; do
 
-  if ! command -v ${program} &> /dev/null; then
+  if ! command -v ${program} &>/dev/null; then
     failure "Required program ${program} not found!"
   fi
 
 done
-
 
 # If no starting target is supplied, create one
 if [[ ${_arg_starting_target} == "none" ]]; then
@@ -523,26 +523,38 @@ if [[ ${_arg_starting_target} == "none" ]]; then
     if [[ ${_arg_com_initialize} == "off" ]]; then
       info "Generating initial average of all subjects using ${_arg_average_type}"
       case ${_arg_average_type} in
-        mean)
-          echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz 0 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-          ;;
-        normmean)
-          echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-          ;;
-        median)
-          printf '%s\n' "${_arg_inputs[@]}" > ${_arg_output_dir}/medianlist.txt
-          echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/initialaverage/initialtarget.nii.gz 0 > ${_arg_output_dir}/jobs/${_datetime}/initialaverage
-          ;;
+      mean)
+        echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz \
+          0 "${_arg_inputs[@]}" \
+          >${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        ;;
+      normmean)
+        echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz \
+          2 "${_arg_inputs[@]}" \
+          >${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        ;;
+      median)
+        printf '%s\n' "${_arg_inputs[@]}" >${_arg_output_dir}/medianlist.txt
+        echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt \
+          ${_arg_output_dir}/initialaverage/initialtarget.nii.gz 0 \
+          >${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        ;;
       esac
 
       if [[ -n ${_arg_starting_average_resolution} ]]; then
-        echo ResampleImage 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_starting_average_resolution} 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        echo ResampleImage 3 ${_arg_output_dir}/initialaverage/initialtarget.nii.gz \
+          ${_arg_output_dir}/initialaverage/initialtarget.nii.gz \
+          ${_arg_starting_average_resolution} 0 \
+          >>${_arg_output_dir}/jobs/${_datetime}/initialaverage
       fi
 
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          --walltime ${_arg_walltime_short} \
+          -N modelbuild_${_datetime}_initialaverage \
+          -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
       fi
 
       last_round_job="--depend modelbuild_${_datetime}_initialaverage"
@@ -550,17 +562,33 @@ if [[ ${_arg_starting_target} == "none" ]]; then
     else
       info "Generating initial average of all subjects using ${_arg_average_type} and center-of-mass alignment"
       # Bootstrap COM alignment with a normalized mean
-      echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz 2 "${_arg_inputs[@]}" > ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
-      echo ImageMath 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz PadImage ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
-      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz Otsu 4 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
-      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
-      echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
-      echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+      echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz 2 \
+        "${_arg_inputs[@]}" \
+        >${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+      echo ImageMath 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz \
+        PadImage ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz 20 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz \
+        ${_arg_output_dir}/initialaverage/bgmask.nii.gz Otsu 4 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz \
+        ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+      echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz \
+        ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz \
+        ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+      echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_dumb_recrop.nii.gz \
+        ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
 
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_dumb -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          --walltime ${_arg_walltime_short} \
+          -N modelbuild_${_datetime}_initialaverage_dumb \
+          -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       fi
 
       # Center-of-mass align the files onto the average, create an average and repeat
@@ -569,37 +597,59 @@ if [[ ${_arg_starting_target} == "none" ]]; then
         echo antsAI -d 3 --convergence 0 \
           -m Mattes[${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz,${file},32,None] \
           -o ${_arg_output_dir}/initialaverage/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
-          -t AlignCentersOfMass >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
+          -t AlignCentersOfMass >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
       done
 
       for file in "${_arg_inputs[@]}"; do
         echo antsApplyTransforms -d 3 -i ${file} -r ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz \
           -t ${_arg_output_dir}/initialaverage/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
-          -o ${_arg_output_dir}/initialaverage/$(basename ${file}) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
+          -o ${_arg_output_dir}/initialaverage/$(basename ${file}) >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
       done
 
       case ${_arg_average_type} in
-        mean)
-          echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-          ;;
-        normmean)
-          echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-          ;;
-        median)
-          for j in "${!_arg_inputs[@]}"; do echo "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]})"; done > ${_arg_output_dir}/medianlist.txt
-          echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-          ;;
+      mean)
+        echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 0 \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) \
+          >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+        ;;
+      normmean)
+        echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 2 \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) \
+          >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+        ;;
+      median)
+        for j in "${!_arg_inputs[@]}"; do echo "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]})"; done \
+          >${_arg_output_dir}/medianlist.txt
+        echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt \
+          ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 0 \
+          >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+        ;;
       esac
 
-      echo ImageMath 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz PadImage ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz Otsu 4 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-      echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_com_recrop.nii.gz ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
-      echo mv -f ${_arg_output_dir}/initialaverage/initialtarget_com_recrop.nii.gz ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+      echo ImageMath 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
+        PadImage ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 20 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
+        ${_arg_output_dir}/initialaverage/bgmask.nii.gz Otsu 4 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+      echo ThresholdImage 3 ${_arg_output_dir}/initialaverage/bgmask.nii.gz \
+        ${_arg_output_dir}/initialaverage/bgmask.nii.gz 0.5 Inf 1 0 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+      echo ExtractRegionFromImageByMask 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
+        ${_arg_output_dir}/initialaverage/initialtarget_com_recrop.nii.gz \
+        ${_arg_output_dir}/initialaverage/bgmask.nii.gz 1 20 \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+      echo mv -f ${_arg_output_dir}/initialaverage/initialtarget_com_recrop.nii.gz \
+        ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
+        >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       if [[ -n ${_arg_starting_average_resolution} ]]; then
-        echo ResampleImage 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_starting_average_resolution} 0 >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+        echo ResampleImage 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
+          ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_starting_average_resolution} 0 \
+          >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       else
-        echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz ${_arg_output_dir}/initialaverage/initialtarget.nii.gz >> ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+        echo cp -f ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
+          ${_arg_output_dir}/initialaverage/initialtarget.nii.gz \
+          >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       fi
 
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com)"
@@ -607,11 +657,22 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_reg_com --depend modelbuild_${_datetime}_initialaverage_dumb ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_resample_com --depend modelbuild_${_datetime}_initialaverage_reg_com ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_initialaverage_com --depend modelbuild_${_datetime}_initialaverage_resample_com -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          --walltime ${_arg_walltime_short} \
+          -N modelbuild_${_datetime}_initialaverage_reg_com \
+          --depend modelbuild_${_datetime}_initialaverage_dumb \
+          ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          --walltime ${_arg_walltime_short} \
+          -N modelbuild_${_datetime}_initialaverage_resample_com \
+          --depend modelbuild_${_datetime}_initialaverage_reg_com \
+          ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          --walltime ${_arg_walltime_short} \
+          -N modelbuild_${_datetime}_initialaverage_com \
+          --depend modelbuild_${_datetime}_initialaverage_resample_com \
+          -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       fi
-
 
       last_round_job="--depend modelbuild_${_datetime}_initialaverage_com"
     fi
@@ -631,13 +692,13 @@ fi
 walltime_reg=${_arg_walltime_linear}
 
 #Convert comma-seperated options into array
-IFS=',' read -r -a _arg_stages <<< ${_arg_stages}
+IFS=',' read -r -a _arg_stages <<<${_arg_stages}
 
 # Looping over different stages of modelbuilding
 for reg_type in "${_arg_stages[@]}"; do
 
-  stage_iterations=$(grep -E -o '[0-9]+' <<< ${reg_type} || echo ${_arg_iterations})
-  reg_type=$(sed -r 's/\[[0-9]+\]//g' <<< ${reg_type})
+  stage_iterations=$(grep -E -o '[0-9]+' <<<${reg_type} || echo ${_arg_iterations})
+  reg_type=$(sed -r 's/\[[0-9]+\]//g' <<<${reg_type})
   i=0
 
   while ((i < stage_iterations)); do
@@ -647,10 +708,12 @@ for reg_type in "${_arg_stages[@]}"; do
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
 
+      # Empty files
+      >${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
+      >${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
+      >${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
+
       # Register images to target
-      rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
-      rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
-      rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
       for j in "${!_arg_inputs[@]}"; do
 
         # Check for existence of moving mask, if it exists, add option
@@ -684,7 +747,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               ${_arg_inputs[${j}]} ${target} \
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
+              >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           elif [[ ${reg_type} == "nlin" ]]; then
             # Full regisration affine + nlin
             walltime_reg=${_arg_walltime_nonlinear}
@@ -696,7 +759,7 @@ for reg_type in "${_arg_stages[@]}"; do
               --convergence ${_arg_convergence} \
               ${_arg_inputs[${j}]} ${target} \
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
+              >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           else
             # Non-linear only
             walltime_reg=${_arg_walltime_nonlinear}
@@ -709,7 +772,7 @@ for reg_type in "${_arg_stages[@]}"; do
               --convergence ${_arg_convergence} \
               ${_arg_inputs[${j}]} ${target} \
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
+              >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           fi
         fi
         # If input masks were provided, resample them using the registration
@@ -721,7 +784,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
               -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
+              >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
           else
             echo antsApplyTransforms -d 3 ${_arg_float} \
               -i ${_arg_masks[${j}]} \
@@ -730,7 +793,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
               -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
+              >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
           fi
         fi
       done
@@ -739,14 +802,16 @@ for reg_type in "${_arg_stages[@]}"; do
       if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz ]]; then
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0 \
-            $(for j in "${!_arg_inputs[@]}"; do if [[ -s ${_arg_masks[${j}]} ]]; then
-              echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) "; fi
+            $(for j in "${!_arg_inputs[@]}"; do
+              if [[ -s ${_arg_masks[${j}]} ]]; then
+                echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) "
+              fi
               ((++j))
-          done) > ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
+            done) >${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
 
           echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
             ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0.25 Inf 1 0 \
-            >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
         fi
         target_mask=${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz
       else
@@ -758,90 +823,101 @@ for reg_type in "${_arg_stages[@]}"; do
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${walltime_reg} -N modelbuild_${_datetime}_${reg_type}_${i}_reg \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          --walltime ${walltime_reg} \
+          -N modelbuild_${_datetime}_${reg_type}_${i}_reg \
           ${last_round_job} \
           ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample ]]; then
-          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+            --walltime ${_arg_walltime_short} \
+            -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* \
             --chunksize 0 \
             ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
         fi
         # Need a special test here in case jobfile is empty
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage ]]; then
-          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+            --walltime ${_arg_walltime_short} \
+            -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
             -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
         fi
       fi
 
-      rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate && touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+      rm -f ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate &&
+        touch ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
       last_round_job=""
 
       # Now we average the transformed input scans and shape update
       if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ]]; then
-        echo "#!/bin/bash" >  ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-        echo "set -euo pipefail" >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+        echo "#!/bin/bash" >${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+        echo "set -euo pipefail" >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         # Averaging
         case ${_arg_average_type} in
-          mean)
-            echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
-          normmean)
-            echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
-          median)
-            for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done > ${_arg_output_dir}/medianlist.txt
-            echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0 \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
+        mean)
+          echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
+            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          ;;
+        normmean)
+          echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
+            2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          ;;
+        median)
+          for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done >${_arg_output_dir}/medianlist.txt
+          echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0 \
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          ;;
         esac
 
         # Shape updating
         case ${_arg_sharpen_type} in
-          laplacian)
-            echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz Sharpen ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
-          unsharp)
-            echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz UnsharpMask ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0.5 1 0 0 \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
-          none)
-            echo cp -f ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-            ;;
+        laplacian)
+          echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+            Sharpen ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          ;;
+        unsharp)
+          echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+            UnsharpMask ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0.5 1 0 0 \
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          ;;
+        none)
+          echo cp -f ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
+            ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          ;;
         esac
 
         # We threshold greater than zero so we don't get negative values
         echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
           ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz 1e-12 Inf 1 0 \
-          >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
         echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz m \
-          ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
-          >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
-
+          ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
+          ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
+          >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         # Average all the affine transforms
         echo ${AVERAGE_AFFINE_PROGRAM} 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
           $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat "; done) \
-          >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         # Now we update the template shape using the same steps as the original code
-        if [[ ${reg_type} == "nlin" || ${reg_type} == "nlin-only"  ]]; then
+        if [[ ${reg_type} == "nlin" || ${reg_type} == "nlin-only" ]]; then
           # Average all the warp transforms
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
             0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
-            >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Scale warp average by the gradient step (note the gradient step is negative!!)
-          echo MultiplyImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz -${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
-            >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          echo MultiplyImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
+            -${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Apply the inverse affine to the scaled warp
           echo antsApplyTransforms -d 3 -e vector ${_arg_float} \
@@ -849,7 +925,7 @@ for reg_type in "${_arg_stages[@]}"; do
             -o ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
-            >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Apply the scaled warp 4 times to the template, then apply the inverse affine
           echo antsApplyTransforms -d 3 ${_arg_float} \
@@ -862,7 +938,7 @@ for reg_type in "${_arg_stages[@]}"; do
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
-            >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Shape update the mask if it is used
           if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
@@ -876,7 +952,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
               -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+              >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
           fi
 
         else
@@ -887,7 +963,7 @@ for reg_type in "${_arg_stages[@]}"; do
             -n BSpline[5] \
             -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
-            >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+            >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Shape update the mask if it is used
           if [[ " ${_arg_masks[@]} " =~ ".nii" ]]; then
@@ -897,22 +973,24 @@ for reg_type in "${_arg_stages[@]}"; do
               -n GenericLabel \
               -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
               -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
-              >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+              >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
           fi
         fi
 
         # Because we use BSpline resampling, we need to truncate the negative values it generates
         echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
           ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz 1e-12 Inf 1 0 \
-          >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
         echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz m \
-          ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
-          >> ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
+          ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
+          ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
+          >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate)"
 
         if [[ ${_arg_dry_run} == "off" ]]; then
-          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+            --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_reg \
             --depend modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
             -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
