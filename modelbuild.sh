@@ -1,7 +1,7 @@
 #!/bin/bash
 # ARG_HELP([A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
-# ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping],[0.25])
+# ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping, can be a comma separated list same length as number of iterations],[0.25])
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target],[none])
 # ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target],[])
 # ARG_OPTIONAL_BOOLEAN([com-initialize],[],[When a starting target is not provided, align all inputs using their center-of-mass before averaging],[on])
@@ -96,7 +96,7 @@ print_help() {
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
-  printf '\t%s\n' "--gradient-step: Gradient scaling step during template warping (default: '0.25')"
+  printf '\t%s\n' "--gradient-step: Gradient scaling step during template warping, can be a comma separated list same length as number of iterations (default: '0.25')"
   printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target (default: 'none')"
   printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
   printf '\t%s\n' "--com-initialize, --no-com-initialize: When a starting target is not provided, align all inputs using their center-of-mass before averaging (on by default)"
@@ -694,6 +694,9 @@ walltime_reg=${_arg_walltime_linear}
 #Convert comma-seperated options into array
 IFS=',' read -r -a _arg_stages <<<${_arg_stages}
 
+#Read gradient schedule into array
+IFS=',' read -r -a _arg_gradient_step <<<${_arg_gradient_step}
+
 # Looping over different stages of modelbuilding
 for reg_type in "${_arg_stages[@]}"; do
 
@@ -703,6 +706,12 @@ for reg_type in "${_arg_stages[@]}"; do
 
   while ((i < stage_iterations)); do
     info "Computing ${reg_type} stage iteration $((i + 1)) jobs"
+
+    if [[ ! -z ${_arg_gradient_step[i]:-} ]]; then
+      gradient_step=${_arg_gradient_step[i]}
+    else
+      gradient_step=${_arg_gradient_step[-1]}
+    fi
 
     if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_shapeupdate.nii.gz ]]; then
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
@@ -916,7 +925,7 @@ for reg_type in "${_arg_stages[@]}"; do
 
           # Scale warp average by the gradient step (note the gradient step is negative!!)
           echo MultiplyImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
-            -${_arg_gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
+            -${gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Apply the inverse affine to the scaled warp
