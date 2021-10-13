@@ -436,10 +436,15 @@ mkdir -p ${_arg_output_dir}/jobs/${_datetime}
 # Store the full command line for each run
 echo ${__invocation} >${_arg_output_dir}/jobs/${_datetime}/invocation
 
-# Load input file into array
-mapfile -t _arg_inputs <${_arg_inputs[0]}
-
 info "Checking input files"
+
+# Load input file into array
+if [[ ! -s ${_arg_inputs[0]} ]]; then
+  failure "Input file ${_arg_inputs[0]} is non-existent or zero size"
+else
+  mapfile -t _arg_inputs <${_arg_inputs[0]}
+fi
+
 for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${file} ]]; then
     failure "Input file ${file} is non-existent or zero size"
