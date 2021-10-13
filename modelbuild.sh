@@ -32,7 +32,9 @@
 # Argbash is a bash code generator used to get arguments parsing right.
 # Argbash is FREE SOFTWARE, see https://argbash.io for more info
 
-die() {
+
+die()
+{
   local _ret="${2:-1}"
   test "${_PRINT_HELP:-no}" = yes && print_help >&2
   echo "$1" >&2
@@ -41,23 +43,30 @@ die() {
 
 # validators
 
-averagetype() {
-  local _allowed=("mean" "median" "normmean") _seeking="$1"
-  for element in "${_allowed[@]}"; do
-    test "$element" = "$_seeking" && echo "$element" && return 0
-  done
-  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
+averagetype()
+{
+	local _allowed=("mean" "median" "normmean") _seeking="$1"
+	for element in "${_allowed[@]}"
+	do
+		test "$element" = "$_seeking" && echo "$element" && return 0
+	done
+	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'mean', 'median' and 'normmean'" 4
 }
 
-sharptypetype() {
-  local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
-  for element in "${_allowed[@]}"; do
-    test "$element" = "$_seeking" && echo "$element" && return 0
-  done
-  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
+
+sharptypetype()
+{
+	local _allowed=("none" "laplacian" "unsharp") _seeking="$1"
+	for element in "${_allowed[@]}"
+	do
+		test "$element" = "$_seeking" && echo "$element" && return 0
+	done
+	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'none', 'laplacian' and 'unsharp'" 4
 }
 
-begins_with_short_option() {
+
+begins_with_short_option()
+{
   local first_option all_short_options='h'
   first_option="${1:0:1}"
   test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
@@ -65,7 +74,7 @@ begins_with_short_option() {
 
 # THE DEFAULTS INITIALIZATION - POSITIONALS
 _positionals=()
-_arg_inputs=('')
+_arg_inputs=('' )
 # THE DEFAULTS INITIALIZATION - OPTIONALS
 _arg_output_dir="output"
 _arg_gradient_step="0.25"
@@ -90,7 +99,9 @@ _arg_block="off"
 _arg_debug="off"
 _arg_dry_run="off"
 
-print_help() {
+
+print_help()
+{
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
@@ -119,188 +130,197 @@ print_help() {
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
 
-parse_commandline() {
+
+parse_commandline()
+{
   _positionals_count=0
-  while test $# -gt 0; do
+  while test $# -gt 0
+  do
     _key="$1"
     case "$_key" in
-    -h | --help)
-      print_help
-      exit 0
-      ;;
-    -h*)
-      print_help
-      exit 0
-      ;;
-    --output-dir)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_output_dir="$2"
-      shift
-      ;;
-    --output-dir=*)
-      _arg_output_dir="${_key##--output-dir=}"
-      ;;
-    --gradient-step)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_gradient_step="$2"
-      shift
-      ;;
-    --gradient-step=*)
-      _arg_gradient_step="${_key##--gradient-step=}"
-      ;;
-    --starting-target)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_starting_target="$2"
-      shift
-      ;;
-    --starting-target=*)
-      _arg_starting_target="${_key##--starting-target=}"
-      ;;
-    --starting-target-mask)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_starting_target_mask="$2"
-      shift
-      ;;
-    --starting-target-mask=*)
-      _arg_starting_target_mask="${_key##--starting-target-mask=}"
-      ;;
-    --no-com-initialize | --com-initialize)
-      _arg_com_initialize="on"
-      test "${1:0:5}" = "--no-" && _arg_com_initialize="off"
-      ;;
-    --starting-average-resolution)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_starting_average_resolution="$2"
-      shift
-      ;;
-    --starting-average-resolution=*)
-      _arg_starting_average_resolution="${_key##--starting-average-resolution=}"
-      ;;
-    --iterations)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_iterations="$2"
-      shift
-      ;;
-    --iterations=*)
-      _arg_iterations="${_key##--iterations=}"
-      ;;
-    --convergence)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_convergence="$2"
-      shift
-      ;;
-    --convergence=*)
-      _arg_convergence="${_key##--convergence=}"
-      ;;
-    --no-float | --float)
-      _arg_float="on"
-      test "${1:0:5}" = "--no-" && _arg_float="off"
-      ;;
-    --no-fast | --fast)
-      _arg_fast="on"
-      test "${1:0:5}" = "--no-" && _arg_fast="off"
-      ;;
-    --average-type)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_average_type="$(averagetype "$2" "average-type")" || exit 1
-      shift
-      ;;
-    --average-type=*)
-      _arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
-      ;;
-    --no-rigid-update | --rigid-update)
-      _arg_rigid_update="on"
-      test "${1:0:5}" = "--no-" && _arg_rigid_update="off"
-      ;;
-    --sharpen-type)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
-      shift
-      ;;
-    --sharpen-type=*)
-      _arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
-      ;;
-    --masks)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_masks="$2"
-      shift
-      ;;
-    --masks=*)
-      _arg_masks="${_key##--masks=}"
-      ;;
-    --no-mask-extract | --mask-extract)
-      _arg_mask_extract="on"
-      test "${1:0:5}" = "--no-" && _arg_mask_extract="off"
-      ;;
-    --stages)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_stages="$2"
-      shift
-      ;;
-    --stages=*)
-      _arg_stages="${_key##--stages=}"
-      ;;
-    --walltime-short)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_walltime_short="$2"
-      shift
-      ;;
-    --walltime-short=*)
-      _arg_walltime_short="${_key##--walltime-short=}"
-      ;;
-    --walltime-linear)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_walltime_linear="$2"
-      shift
-      ;;
-    --walltime-linear=*)
-      _arg_walltime_linear="${_key##--walltime-linear=}"
-      ;;
-    --walltime-nonlinear)
-      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-      _arg_walltime_nonlinear="$2"
-      shift
-      ;;
-    --walltime-nonlinear=*)
-      _arg_walltime_nonlinear="${_key##--walltime-nonlinear=}"
-      ;;
-    --no-block | --block)
-      _arg_block="on"
-      test "${1:0:5}" = "--no-" && _arg_block="off"
-      ;;
-    --no-debug | --debug)
-      _arg_debug="on"
-      test "${1:0:5}" = "--no-" && _arg_debug="off"
-      ;;
-    --no-dry-run | --dry-run)
-      _arg_dry_run="on"
-      test "${1:0:5}" = "--no-" && _arg_dry_run="off"
-      ;;
-    *)
-      _last_positional="$1"
-      _positionals+=("$_last_positional")
-      _positionals_count=$((_positionals_count + 1))
-      ;;
+      -h|--help)
+        print_help
+        exit 0
+        ;;
+      -h*)
+        print_help
+        exit 0
+        ;;
+      --output-dir)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_output_dir="$2"
+        shift
+        ;;
+      --output-dir=*)
+        _arg_output_dir="${_key##--output-dir=}"
+        ;;
+      --gradient-step)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_gradient_step="$2"
+        shift
+        ;;
+      --gradient-step=*)
+        _arg_gradient_step="${_key##--gradient-step=}"
+        ;;
+      --starting-target)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_target="$2"
+        shift
+        ;;
+      --starting-target=*)
+        _arg_starting_target="${_key##--starting-target=}"
+        ;;
+      --starting-target-mask)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_target_mask="$2"
+        shift
+        ;;
+      --starting-target-mask=*)
+        _arg_starting_target_mask="${_key##--starting-target-mask=}"
+        ;;
+      --no-com-initialize|--com-initialize)
+        _arg_com_initialize="on"
+        test "${1:0:5}" = "--no-" && _arg_com_initialize="off"
+        ;;
+      --starting-average-resolution)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_average_resolution="$2"
+        shift
+        ;;
+      --starting-average-resolution=*)
+        _arg_starting_average_resolution="${_key##--starting-average-resolution=}"
+        ;;
+      --iterations)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_iterations="$2"
+        shift
+        ;;
+      --iterations=*)
+        _arg_iterations="${_key##--iterations=}"
+        ;;
+      --convergence)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_convergence="$2"
+        shift
+        ;;
+      --convergence=*)
+        _arg_convergence="${_key##--convergence=}"
+        ;;
+      --no-float|--float)
+        _arg_float="on"
+        test "${1:0:5}" = "--no-" && _arg_float="off"
+        ;;
+      --no-fast|--fast)
+        _arg_fast="on"
+        test "${1:0:5}" = "--no-" && _arg_fast="off"
+        ;;
+      --average-type)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_average_type="$(averagetype "$2" "average-type")" || exit 1
+        shift
+        ;;
+      --average-type=*)
+        _arg_average_type="$(averagetype "${_key##--average-type=}" "average-type")" || exit 1
+        ;;
+      --no-rigid-update|--rigid-update)
+        _arg_rigid_update="on"
+        test "${1:0:5}" = "--no-" && _arg_rigid_update="off"
+        ;;
+      --sharpen-type)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_sharpen_type="$(sharptypetype "$2" "sharpen-type")" || exit 1
+        shift
+        ;;
+      --sharpen-type=*)
+        _arg_sharpen_type="$(sharptypetype "${_key##--sharpen-type=}" "sharpen-type")" || exit 1
+        ;;
+      --masks)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_masks="$2"
+        shift
+        ;;
+      --masks=*)
+        _arg_masks="${_key##--masks=}"
+        ;;
+      --no-mask-extract|--mask-extract)
+        _arg_mask_extract="on"
+        test "${1:0:5}" = "--no-" && _arg_mask_extract="off"
+        ;;
+      --stages)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_stages="$2"
+        shift
+        ;;
+      --stages=*)
+        _arg_stages="${_key##--stages=}"
+        ;;
+      --walltime-short)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_walltime_short="$2"
+        shift
+        ;;
+      --walltime-short=*)
+        _arg_walltime_short="${_key##--walltime-short=}"
+        ;;
+      --walltime-linear)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_walltime_linear="$2"
+        shift
+        ;;
+      --walltime-linear=*)
+        _arg_walltime_linear="${_key##--walltime-linear=}"
+        ;;
+      --walltime-nonlinear)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_walltime_nonlinear="$2"
+        shift
+        ;;
+      --walltime-nonlinear=*)
+        _arg_walltime_nonlinear="${_key##--walltime-nonlinear=}"
+        ;;
+      --no-block|--block)
+        _arg_block="on"
+        test "${1:0:5}" = "--no-" && _arg_block="off"
+        ;;
+      --no-debug|--debug)
+        _arg_debug="on"
+        test "${1:0:5}" = "--no-" && _arg_debug="off"
+        ;;
+      --no-dry-run|--dry-run)
+        _arg_dry_run="on"
+        test "${1:0:5}" = "--no-" && _arg_dry_run="off"
+        ;;
+      *)
+        _last_positional="$1"
+        _positionals+=("$_last_positional")
+        _positionals_count=$((_positionals_count + 1))
+        ;;
     esac
     shift
   done
 }
 
-handle_passed_args_count() {
+
+handle_passed_args_count()
+{
   local _required_args_string="'inputs'"
   test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
 }
 
-assign_positional_args() {
+
+assign_positional_args()
+{
   local _positional_name _shift_for=$1
   _positional_names="_arg_inputs "
   _our_args=$((${#_positionals[@]} - 1))
-  for ((ii = 0; ii < _our_args; ii++)); do
+  for ((ii = 0; ii < _our_args; ii++))
+  do
     _positional_names="$_positional_names _arg_inputs[$((ii + 1))]"
   done
 
   shift "$_shift_for"
-  for _positional_name in ${_positional_names}; do
+  for _positional_name in ${_positional_names}
+  do
     test $# -gt 0 || break
     eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an Argbash bug." 1
     shift
@@ -313,6 +333,8 @@ assign_positional_args 1 "${_positionals[@]}"
 
 # OTHER STUFF GENERATED BY Argbash
 # Validation of values
+
+
 
 ### END OF CODE GENERATED BY Argbash (sortof) ### ])
 # [ <-- needed because of Argbash
@@ -341,26 +363,26 @@ function __b3bp_log() {
   shift
 
   # shellcheck disable=SC2034
-  local color_debug="\\x1b[35m"
+  local color_debug="\\x1b[35m" #]
   # shellcheck disable=SC2034
-  local color_info="\\x1b[32m"
+  local color_info="\\x1b[32m" #]
   # shellcheck disable=SC2034
-  local color_notice="\\x1b[34m"
+  local color_notice="\\x1b[34m" #]
   # shellcheck disable=SC2034
-  local color_warning="\\x1b[33m"
+  local color_warning="\\x1b[33m" #]
   # shellcheck disable=SC2034
-  local color_error="\\x1b[31m"
+  local color_error="\\x1b[31m" #]
   # shellcheck disable=SC2034
-  local color_critical="\\x1b[1;31m"
+  local color_critical="\\x1b[1;31m" #]
   # shellcheck disable=SC2034
-  local color_alert="\\x1b[1;37;41m"
+  local color_alert="\\x1b[1;37;41m" #]
   # shellcheck disable=SC2034
-  local color_failure="\\x1b[1;4;5;37;41m"
+  local color_failure="\\x1b[1;4;5;37;41m" #]
 
   local colorvar="color_${log_level}"
 
   local color="${!colorvar:-${color_error}}"
-  local color_reset="\\x1b[0m"
+  local color_reset="\\x1b[0m" #]
 
   if [[ "${NO_COLOR:-}" = "true" ]] || { [[ "${TERM:-}" != "xterm"* ]] && [[ "${TERM:-}" != "screen"* ]]; } || [[ ! -t 2 ]]; then
     if [[ "${NO_COLOR:-}" != "false" ]]; then
