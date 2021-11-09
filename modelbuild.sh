@@ -1040,6 +1040,10 @@ for reg_type in "${_arg_stages[@]}"; do
     ((++i))
   done
 
+
+
 done
+
+ln -srf ${_arg_output_dir}/${reg_type}/${i} ${_arg_output_dir}/final
 
 # ] <-- needed because of Argbash
