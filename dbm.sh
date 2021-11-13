@@ -377,7 +377,7 @@ _arg_log_jacobian=1
 info "Computing Jacobians from non-linear warp fields"
 for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} .nii.gz)_1InverseWarp.nii.gz \
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz \
       ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
@@ -396,7 +396,7 @@ for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}) ]]; then
     echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
       -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t ${_arg_output_dir}/final/transforms/$(basename ${file} .nii.gz)_0GenericAffine.mat \
+      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
       -o [ ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}),1 ]"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/affine_warp
@@ -459,9 +459,9 @@ fi
 # Generate delin affine from warp field
 info "Estimate delin affine from nlin warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} .nii.gz).mat ]]; then
-    echo "ANTSUseDeformationFieldToGetAffineTransform ${_arg_output_dir}/final/transforms/$(basename ${file} .nii.gz)_1Warp.nii.gz \
-      ${_arg_delin_affine_ratio} affine ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} .nii.gz).mat \
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat ]]; then
+    echo "ANTSUseDeformationFieldToGetAffineTransform ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
+      ${_arg_delin_affine_ratio} affine ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
       ${_arg_mask}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp
@@ -481,7 +481,7 @@ for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}) ]]; then
     echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
       -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} .nii.gz).mat \
+      -t ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
       -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}),1 ]"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine
