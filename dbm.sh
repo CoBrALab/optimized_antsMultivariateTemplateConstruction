@@ -368,16 +368,13 @@ fi
 
 _arg_log_jacobian=1
 
-# How to final the final nlin outputs
-# - symlink the final output in modelbuild
-
 # Generate jacobian from nlin field
 # Log, values > 0, voxel expands towards subject (i.e. subject voxel is larger)
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
 info "Computing Jacobians from non-linear warp fields"
 for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz \
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
       ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
@@ -481,7 +478,7 @@ for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}) ]]; then
     echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
       -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
+      -t [ ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat,1 ] \
       -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}),1 ]"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine
