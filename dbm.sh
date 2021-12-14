@@ -194,6 +194,9 @@ assign_positional_args 1 "${_positionals[@]}"
 set -euo pipefail
 export QBATCH_SCRIPT_FOLDER="${_arg_output_dir}/qbatch/"
 
+# Calculator for maths
+calc () { awk "BEGIN{ print $* }" ;}
+
 ### BASH HELPER FUNCTIONS ###
 # Stolen from https://github.com/kvz/bash3boilerplate
 
@@ -556,7 +559,7 @@ fi
 info "Smoothing Jacobians"
 for file in "${_arg_inputs[@]}"; do
   for fwhm in "${_arg_jacobian_smooth[@]}"; do
-    fwhm_num=$(echo ${fwhm} | grep -o -E '^[0-9]+')
+    sigma_num=$(calc "$(echo ${fwhm} | grep -o -E '^[0-9]+')/(2*sqrt(2*log(2)))")
     if [[ ${fwhm} =~ [0-9]+mm$ ]]; then
       fwhm_type=1
     elif [[ ${fwhm} =~ [0-9]+vox$ ]]; then
@@ -567,13 +570,13 @@ for file in "${_arg_inputs[@]}"; do
     if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
       echo SmoothImage 3 \
         ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file}) \
-        ${fwhm_num} \
+        ${sigma_num} \
         ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
     fi
     if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
       echo SmoothImage 3 \
         ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file}) \
-        ${fwhm_num} \
+        ${sigma_num} \
         ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
     fi
   done
