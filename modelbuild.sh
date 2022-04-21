@@ -1044,6 +1044,8 @@ for reg_type in "${_arg_stages[@]}"; do
 
 done
 
-ln -srf ${_arg_output_dir}/${reg_type}/$((i - 1)) ${_arg_output_dir}/final
+if [[ ! -L ${_arg_output_dir}/final ]]; then
+    ln -srf ${_arg_output_dir}/${reg_type}/$((i - 1)) ${_arg_output_dir}/final
+fi
 
 # ] <-- needed because of Argbash
