@@ -7,7 +7,7 @@ differing in some of the implementation mechanisms.
 
 ## Differences
 
-Changes made to pipeline flow which should not affect final outcome:
+### Changes made to pipeline flow which should not affect final outcome:
 
 - File-presence based state tracking to allow for resume
 - Logging of all commands run
@@ -17,7 +17,7 @@ parallelism
 - nested directory hierarchy for organization of files
 - no overwriting of intermediate files allowing for traceability of steps
 
-Changes which are expected to affect final outcome:
+### Changes which are expected to affect final outcome:
 
 - Registration with [`antsRegistration_affine_SyN.sh`](https://github.com/CoBrALab/minc-toolkit-extras/blob/master/antsRegistration_affine_SyN.sh)
 and driven by [`ants_generate_iterations.py`](https://github.com/CoBrALab/minc-toolkit-extras/blob/master/ants_generate_iterations.py)
@@ -47,16 +47,19 @@ for running commands locally or with cluster integration.
 ## Missing features
 
 The following are features missing compared to `antsMultivariateTemplateConstruction2.sh`
-some of which will be added on a interest basis:
 
+### Planned
 - multispectral registration
   - modality weights
 - change non-linear transform type
 - metric control for all stages
 - nonlinear parameter control
-- preprocessing (will not be implemented)
-- 2D (will not be implemented)
-- 4D (will not be implemented)
+
+### Will not be implemented
+
+- preprocessing
+- 2D
+- 4D
 
 ## Basic usage
 
@@ -66,15 +69,15 @@ been updated
 ```bash
 $ ./modelbuild.sh --help
 A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
-Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text files, one line per input, one file per spectra
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
-        --gradient-step: Gradient scaling step during template warping (default: '0.25')
+        --gradient-step: Gradient scaling step during template warping, can be a comma separated list same length as number of iterations (default: '0.25')
         --starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target (default: 'none')
         --starting-target-mask: Mask for starting target (no default)
         --com-initialize, --no-com-initialize: When a starting target is not provided, align all inputs using their center-of-mass before averaging (on by default)
-        --starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample this average to a target resolution MxNxO before modelbuild (no default)
+        --starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild (no default)
         --iterations: Number of iterations of model building per stage (default: '4')
         --convergence: Convergence limit during registration calls (default: '1e-7')
         --float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)
@@ -85,9 +88,10 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --masks: File containing mask filenames, one file per line (no default)
         --mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)
         --stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')
-        --walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
-        --walltime-linear: Walltime for linear registration stages (default: '0:30:00')
-        --walltime-nonlinear: Walltime for nonlinear registration stages (default: '2:30:00')
+        --reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (on by default)
+        --walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')
+        --walltime-linear: Walltime for linear registration stages (default: '0:45:00')
+        --walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')
         --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
@@ -100,12 +104,57 @@ per path to an input file
 $ ./modelbuild.sh input.txt
 ```
 
+## Deformation Based Morphometry (DBM)
+
+Once a unbiased average model has been constructed, its possible to post-process the consensus deformation fields
+to produce Jacobian determinants which encode the voxel-wise distance from each input scan to the consensus
+average.
+
+Post processing will generate `absolute` (including affine components) and `relative` (excluding affine components, and residual affines)
+log Jacobian determinants (`voxel > 0`, voxel expands towards subject (i.e. subject voxel is larger), `voxel < 0`, voxel contracts towards subject (i.e. subject voxel is smaller)). 
+
+A minimal run command, assuming a complete run from `modelbuild.sh`, run using `input.txt`
+
+```bash
+$ ./dbm.sh input.txt
+```
+
+Complete run options
+```bash
+$ ./dbm.sh --help
+DBM post-processing for optimized_antsMultivariateTemplateConstruction
+Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+        <inputs>: Input text files, one line per input, one file per spectra
+        -h, --help: Prints help
+        --output-dir: Output directory for modelbuild (default: 'output')
+        --float, --no-float: Use float instead of double for calculations (reduce memory requirements, reduce precision) (off by default)
+        --mask: Mask file for average to improve delin estimates (no default)
+        --delin-affine-ratio: Ratio of voxels within mask used to estimate delin affine (default: '0.25')
+        --use-geometric, --no-use-geometric: Use geometric estimate of Jacobian instead of finite-difference (on by default)
+        --jacobian-smooth: Comma separated list of smoothing gaussian FWHM, append "vox" for voxels, "mm" for millimeters (default: '4vox')
+        --walltime: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
+        --block, --no-block: For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
+        --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
+        --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
+```
+
+### Classical DBM
+
+In classical DBM, rather than building an unbiased average, a direct registration is done to a target template
+and the Jacobian determinants computed. This is achievable using these tools by limiting the model construction
+to a single iteration and ignoring the average model in favour of the initial target.
+
+```bash
+$ ./modelbuild.sh --starting-target <MNI_model> --stages nlin[1] input.txt
+$ ./dbm.sh input.txt
+```
+
 ## Output directory structure
 
 ```bash
 output/
 ├── initialaverage
-│   ├── initialtarget.nii.gz # Generated if no starting target is supplied
+│   └── initialtarget.nii.gz # Generated if no starting target is supplied
 ├── jobs
 │   └── <run date/time in ISO format>
 │       ├── initialaverage
@@ -124,37 +173,47 @@ output/
 │       ├── nlin_{0,1,2,3}_maskaverage
 │       ├── nlin_{0,1,2,3}_maskresample
 │       ├── nlin_{0,1,2,3}_reg
-│       ├── nlin_{0,1,2,3}_shapeupdate
+│       └── nlin_{0,1,2,3}_shapeupdate
+├── dbm
+│   ├── intermediate
+│   │   ├── affine # jacobians from affine transforms
+│   │   ├── delin # jacobians from residual affines
+│   │   └── nlin # jacobians from nonlinear deformation fields
+│   └── jacobian
+│       ├── full
+│       │   └── smooth # Final per-scan smoothed absolute jacobains
+│       └── relative
+│           └── smooth # Final per-scan smoothed relative jacobains
 ├── rigid
 │   ├── {0,1,2,3}
 │   │   ├── average
-│   │       ├── template.nii.gz # Average of resampled files
-│   │       ├── affine.mat # Average of affines
-│   │       ├── template_sharpen.nii.gz # Template after sharpening
-│   │       ├── nonzero.nii.gz # Nonzero mask to clip negative values from BSpline[5]
-│   │       └── template_sharpen_shapeupdate.nii.gz # Template after shape update
+│   │   │   ├── template.nii.gz # Average of resampled files
+│   │   │   ├── affine.mat # Average of affines
+│   │   │   ├── template_sharpen.nii.gz # Template after sharpening
+│   │   │   ├── nonzero.nii.gz # Nonzero mask to clip negative values from BSpline[5]
+│   │   │   └── template_sharpen_shapeupdate.nii.gz # Template after shape update
 │   │   ├── resample # One file per input, resampled into template space
 │   │   │   └── masks # One mask file per input, resampled into template space
 │   │   └── transforms # Affine transform files per input
 ├── similarity
 │   ├── {0,1,2,3}
 │   │   ├── average
-│   │       ├── template.nii.gz
-│   │       ├── affine.mat
-│   │       ├── template_sharpen.nii.gz
-│   │       ├── nonzero.nii.gz
-│   │       └── template_sharpen_shapeupdate.nii.gz
+│   │   │   ├── template.nii.gz
+│   │   │   ├── affine.mat
+│   │   │   ├── template_sharpen.nii.gz
+│   │   │   ├── nonzero.nii.gz
+│   │   │   └── template_sharpen_shapeupdate.nii.gz
 │   │   ├── resample
 │   │   │   └── masks
 │   │   └── transforms
 ├── affine
 │   ├── {0,1,2,3}
 │   │   ├── average
-│   │       ├── template.nii.gz
-│   │       ├── affine.mat
-│   │       ├── template_sharpen.nii.gz
-│   │       ├── nonzero.nii.gz
-│   │       └── template_sharpen_shapeupdate.nii.gz
+│   │   │   ├── template.nii.gz
+│   │   │   ├── affine.mat
+│   │   │   ├── template_sharpen.nii.gz
+│   │   │   ├── nonzero.nii.gz
+│   │   │   └── template_sharpen_shapeupdate.nii.gz
 │   │   ├── resample
 │   │   │   └── masks
 │   │   └── transforms
