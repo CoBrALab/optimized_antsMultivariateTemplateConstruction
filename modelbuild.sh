@@ -22,6 +22,9 @@
 # ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:30:00])
 # ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:45:00])
 # ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[4:30:00])
+# ARG_OPTIONAL_SINGLE([jobname-prefix],[],[Prefix to add to front of job names, used by twolevel wrapper],[])
+# ARG_OPTIONAL_SINGLE([job-predepend],[],[Job name dependency pattern to prepend to all jobs, used by twolevel wrapper],[])
+# ARG_OPTIONAL_BOOLEAN([skip-file-checks],[],[Skip preflight checking of existence of files, used by twolevel wrapper],[])
 # ARG_OPTIONAL_BOOLEAN([block],[],[For SGE, PBS and SLURM, blocks execution until jobs are finished.],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
@@ -97,6 +100,9 @@ _arg_reuse_affines="on"
 _arg_walltime_short="00:30:00"
 _arg_walltime_linear="0:45:00"
 _arg_walltime_nonlinear="4:30:00"
+_arg_jobname_prefix=
+_arg_job_predepend=
+_arg_skip_file_checks="off"
 _arg_block="off"
 _arg_debug="off"
 _arg_dry_run="off"
@@ -105,7 +111,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -128,6 +134,9 @@ print_help()
   printf '\t%s\n' "--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')"
   printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:45:00')"
   printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')"
+  printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
+  printf '\t%s\n' "--job-predepend: Job name dependency pattern to prepend to all jobs, used by twolevel wrapper (no default)"
+  printf '\t%s\n' "--skip-file-checks, --no-skip-file-checks: Skip preflight checking of existence of files, used by twolevel wrapper (off by default)"
   printf '\t%s\n' "--block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
@@ -285,6 +294,26 @@ parse_commandline()
       --walltime-nonlinear=*)
         _arg_walltime_nonlinear="${_key##--walltime-nonlinear=}"
         ;;
+      --jobname-prefix)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_jobname_prefix="$2"
+        shift
+        ;;
+      --jobname-prefix=*)
+        _arg_jobname_prefix="${_key##--jobname-prefix=}"
+        ;;
+      --job-predepend)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_job_predepend="$2"
+        shift
+        ;;
+      --job-predepend=*)
+        _arg_job_predepend="${_key##--job-predepend=}"
+        ;;
+      --no-skip-file-checks|--skip-file-checks)
+        _arg_skip_file_checks="on"
+        test "${1:0:5}" = "--no-" && _arg_skip_file_checks="off"
+        ;;
       --no-block|--block)
         _arg_block="on"
         test "${1:0:5}" = "--no-" && _arg_block="off"
@@ -372,11 +401,13 @@ else
   mapfile -t _arg_inputs <${_arg_inputs[0]}
 fi
 
-for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${file} ]]; then
-    failure "Input file ${file} is non-existent or zero size"
-  fi
-done
+if [[ ${_arg_skip_file_checks} == "off" ]]; then
+  for file in "${_arg_inputs[@]}"; do
+    if [[ ! -s ${file} ]]; then
+      failure "Input file ${file} is non-existent or zero size"
+    fi
+  done
+fi
 
 # Fill up array of masks
 if [[ -z ${_arg_masks} ]]; then
@@ -387,11 +418,13 @@ if [[ -z ${_arg_masks} ]]; then
 else
   mapfile -t _arg_masks <${_arg_masks}
   info "Checking mask files"
-  for file in "${_arg_masks[@]}"; do
-    if [[ ! -s ${file} ]]; then
-      failure "Mask file ${file} is non-existent or zero size"
-    fi
-  done
+  if [[ ${_arg_skip_file_checks} == "off" ]]; then
+    for file in "${_arg_masks[@]}"; do
+      if [[ ! -s ${file} ]]; then
+        failure "Mask file ${file} is non-existent or zero size"
+      fi
+    done
+  fi
 fi
 
 # If target mask is specified use it
@@ -434,6 +467,11 @@ if [[ ${_arg_block} == "on" ]]; then
   _arg_block="--block"
 else
   _arg_block=""
+fi
+
+# Job predependency from wrapper
+if [[ ! -z ${_arg_job_predepend} ]]; then
+  _arg_job_predepend="--depend ${_arg_job_predepend}*"
 fi
 
 # Prefight check for required programs
@@ -485,11 +523,11 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       if [[ ${_arg_dry_run} == "off" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
           --walltime ${_arg_walltime_short} \
-          -N modelbuild_${_datetime}_initialaverage \
+          -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage \
           -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
       fi
 
-      last_round_job="--depend modelbuild_${_datetime}_initialaverage"
+      last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage"
 
     else
       info "Generating initial average of all subjects using ${_arg_average_type} and center-of-mass alignment"
@@ -519,7 +557,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       if [[ ${_arg_dry_run} == "off" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
           --walltime ${_arg_walltime_short} \
-          -N modelbuild_${_datetime}_initialaverage_dumb \
+          -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_dumb \
           -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
       fi
 
@@ -591,22 +629,22 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       if [[ ${_arg_dry_run} == "off" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
           --walltime ${_arg_walltime_short} \
-          -N modelbuild_${_datetime}_initialaverage_reg_com \
-          --depend modelbuild_${_datetime}_initialaverage_dumb \
+          -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_reg_com \
+          ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_dumb \
           ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
           --walltime ${_arg_walltime_short} \
-          -N modelbuild_${_datetime}_initialaverage_resample_com \
-          --depend modelbuild_${_datetime}_initialaverage_reg_com \
+          -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_resample_com \
+          ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_reg_com \
           ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
           --walltime ${_arg_walltime_short} \
-          -N modelbuild_${_datetime}_initialaverage_com \
-          --depend modelbuild_${_datetime}_initialaverage_resample_com \
+          -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_com \
+          ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_resample_com \
           -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
       fi
 
-      last_round_job="--depend modelbuild_${_datetime}_initialaverage_com"
+      last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_com"
     fi
   else
     last_round_job=""
@@ -766,14 +804,14 @@ for reg_type in "${_arg_stages[@]}"; do
       if [[ ${_arg_dry_run} == "off" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
           --walltime ${walltime_reg} \
-          -N modelbuild_${_datetime}_${reg_type}_${i}_reg \
+          -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_reg \
           ${last_round_job} \
           ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample ]]; then
           qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
             --walltime ${_arg_walltime_short} \
-            -N modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
-            --depend modelbuild_${_datetime}_${reg_type}_${i}_reg* \
+            -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
+            ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_reg* \
             --chunksize 0 \
             ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
         fi
@@ -781,8 +819,8 @@ for reg_type in "${_arg_stages[@]}"; do
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage ]]; then
           qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
             --walltime ${_arg_walltime_short} \
-            -N modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
-            --depend modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
+            -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
+            ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
             -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
         fi
       fi
@@ -931,12 +969,12 @@ for reg_type in "${_arg_stages[@]}"; do
 
         if [[ ${_arg_dry_run} == "off" ]]; then
           qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
-            --walltime ${_arg_walltime_short} -N modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
-            --depend modelbuild_${_datetime}_${reg_type}_${i}_reg \
-            --depend modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
+            --walltime ${_arg_walltime_short} -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
+            ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_reg \
+            ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
             -- bash ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
         fi
-        last_round_job="--depend modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate"
+        last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate"
       fi
 
     fi
