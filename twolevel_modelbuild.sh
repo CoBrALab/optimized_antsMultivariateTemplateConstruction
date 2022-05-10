@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Created by argbash-init v2.10.0
-# ARG_HELP([A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
+# ARG_HELP([A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, identical to inputs in structure],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
@@ -42,7 +42,7 @@ _arg_debug="off"
 
 print_help()
 {
-  printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
+  printf '%s\n' "A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] <inputs> ... \n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per subject, comma separated scans per subject"
   printf '\t%s\n' "... : Arguments to be passed to modelbuild.sh without validation"
