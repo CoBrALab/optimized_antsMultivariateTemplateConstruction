@@ -152,6 +152,8 @@ echo ${__invocation} >${_arg_output_dir}/jobs/${_datetime}/invocation
 mkdir -p ${_arg_output_dir}/secondlevel/inputs
 rm -f ${_arg_output_dir}/secondlevel/input_files.txt
 
+info "Launching modelbuilds for each input row"
+
 i=1
 while read -r subject_scans; do
   IFS=',' read -r -a scans <<<${subject_scans}
@@ -159,10 +161,33 @@ while read -r subject_scans; do
   ln -sf ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz
   printf "%s\n" ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/input_files.txt
   printf "%s\n" "${scans[@]}" > ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
-  info "${__dir}/modelbuild.sh --jobname-prefix "twolevel_${_datetime}_subject_${i}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
+
+  if [[ ${#scans[@]} -gt 1 ]]; then
+    debug "${__dir}/modelbuild.sh --jobname-prefix "twolevel_${_datetime}_subject_${i}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
+    ${__dir}/modelbuild.sh \
+      --jobname-prefix "twolevel_${_datetime}_subject_${i}_" \
+      ${_arg_leftovers[@]} \
+      --output-dir ${_arg_output_dir}/firstlevel/subject_${i} \
+      ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
+  else
+    # Generate Idenity Transforms
+    info "Subject ${i} has only a single scan and will not have a subject wise average, it will be included in the second level model build"
+    mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}/final/{transforms,resample,average}
+    ln -sf ${scans[0]} ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz
+    ImageMath 3 ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat MakeAffineTransform 1
+    CreateImage 3 ${scans[0]} ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz 0
+    CreateDisplacementField 3 0 \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz
+    cp -f ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
+  fi
   ((++i))
 done < ${_arg_inputs}
 
+debug "${__dir}/modelbuild.sh --skip-file-checks --job-predepend "twolevel_${_datetime}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
 ${__dir}/modelbuild.sh --skip-file-checks --job-predepend "twolevel_${_datetime}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
 
 # ] <-- needed because of Argbash
