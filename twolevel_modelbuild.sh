@@ -6,6 +6,7 @@
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, identical to inputs in structure],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per subject, comma separated scans per subject],[])
+# ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
 # ARG_LEFTOVERS([Arguments to be passed to modelbuild.sh without validation])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
@@ -38,18 +39,20 @@ _arg_leftovers=()
 _arg_output_dir="output"
 _arg_masks=
 _arg_debug="off"
+_arg_dry_run="off"
 
 
 print_help()
 {
   printf '%s\n' "A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] <inputs> ... \n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per subject, comma separated scans per subject"
   printf '\t%s\n' "... : Arguments to be passed to modelbuild.sh without validation"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
   printf '\t%s\n' "--masks: File containing mask filenames, identical to inputs in structure (no default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
+  printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
 
 
@@ -87,6 +90,10 @@ parse_commandline()
       --no-debug|--debug)
         _arg_debug="on"
         test "${1:0:5}" = "--no-" && _arg_debug="off"
+        ;;
+      --no-dry-run|--dry-run)
+        _arg_dry_run="on"
+        test "${1:0:5}" = "--no-" && _arg_dry_run="off"
         ;;
       *)
         _last_positional="$1"
@@ -158,7 +165,7 @@ i=1
 while read -r subject_scans; do
   IFS=',' read -r -a scans <<<${subject_scans}
   mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}
-  ln -sf ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz
+  ln -sfr ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz
   printf "%s\n" ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/input_files.txt
   printf "%s\n" "${scans[@]}" > ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
 
@@ -173,13 +180,13 @@ while read -r subject_scans; do
     # Generate Idenity Transforms
     info "Subject ${i} has only a single scan and will not have a subject wise average, it will be included in the second level model build"
     mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}/final/{transforms,resample,average}
-    ln -sf ${scans[0]} ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz
+    ln -sfr $(realpath ${scans[0]}) ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz
     ImageMath 3 ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat MakeAffineTransform 1
     CreateImage 3 ${scans[0]} ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz 0
     CreateDisplacementField 3 0 \
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
       ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz
     cp -f ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz \
       ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
