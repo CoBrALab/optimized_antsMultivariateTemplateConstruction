@@ -10,6 +10,7 @@
 # ARG_OPTIONAL_BOOLEAN([block],[],[For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished.],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
+# ARG_OPTIONAL_SINGLE([jobname-prefix],[],[Prefix to add to front of job names, used by twolevel wrapper],[])
 # ARG_POSITIONAL_INF([inputs],[Input text files, one line per input, one file per spectra],[1])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
@@ -49,12 +50,13 @@ _arg_walltime="00:15:00"
 _arg_block="off"
 _arg_debug="off"
 _arg_dry_run="off"
+_arg_jobname_prefix=
 
 
 print_help()
 {
   printf '%s\n' "DBM post-processing for optimized_antsMultivariateTemplateConstruction"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -67,6 +69,7 @@ print_help()
   printf '\t%s\n' "--block, --no-block: For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
+  printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
 }
 
 
@@ -144,6 +147,14 @@ parse_commandline()
       --no-dry-run|--dry-run)
         _arg_dry_run="on"
         test "${1:0:5}" = "--no-" && _arg_dry_run="off"
+        ;;
+      --jobname-prefix)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_jobname_prefix="$2"
+        shift
+        ;;
+      --jobname-prefix=*)
+        _arg_jobname_prefix="${_key##--jobname-prefix=}"
         ;;
       *)
         _last_positional="$1"
@@ -281,7 +292,7 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_nlin_jacobian \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
     ${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
 fi
 
@@ -300,7 +311,7 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/affine_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_affine_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_affine_warp \
     ${_arg_output_dir}/jobs/${_datetime}/affine_warp
 fi
 
@@ -319,8 +330,8 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/affine_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_affine_jacobian \
-    --depend dbm_${_datetime}_affine_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_affine_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_affine_warp \
     ${_arg_output_dir}/jobs/${_datetime}/affine_jacobian
 fi
 
@@ -347,7 +358,7 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_mask)"
 if [[ ${_arg_dry_run} == "off" && -s ${_arg_output_dir}/jobs/${_datetime}/delin_mask ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_delin_mask \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_mask \
     -- bash ${_arg_output_dir}/jobs/${_datetime}/delin_mask
 fi
 
@@ -365,8 +376,8 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_delin_affine_from_warp \
-    --depend dbm_${_datetime}_delin_mask \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_affine_from_warp \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_mask \
     ${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp
 fi
 
@@ -385,8 +396,8 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_delin_warp_from_delin_affine \
-    --depend dbm_${_datetime}_delin_affine_from_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_warp_from_delin_affine \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_affine_from_warp \
     ${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine
 fi
 
@@ -403,8 +414,8 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_jacobian_from_delin_warp \
-    --depend dbm_${_datetime}_delin_warp_from_delin_affine \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_jacobian_from_delin_warp \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_warp_from_delin_affine \
     ${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp
 fi
 
@@ -423,9 +434,9 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_gen_full_jacobian \
-    --depend dbm_${_datetime}_affine_jacobian \
-    --depend dbm_${_datetime}_nlin_jacobian \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_gen_full_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_affine_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
     ${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian
 fi
 
@@ -444,9 +455,9 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_gen_rel_jacobian \
-    --depend dbm_${_datetime}_nlin_jacobian \
-    --depend dbm_${_datetime}_jacobian_from_delin_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_gen_rel_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_jacobian_from_delin_warp \
     ${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian
 fi
 
@@ -481,9 +492,9 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_smooth_jacobian \
-    --depend dbm_${_datetime}_gen_full_jacobian \
-    --depend dbm_${_datetime}_gen_rel_jacobian \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_smooth_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_gen_full_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_gen_rel_jacobian \
     ${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian
 fi
 
