@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Calculator for maths
 calc () { awk "BEGIN{ print $* }" ;}
 
