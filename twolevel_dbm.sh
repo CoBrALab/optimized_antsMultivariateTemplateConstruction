@@ -4,9 +4,10 @@
 # ARG_HELP([A wrapper to enable two-level (aka longitudinal) DBM using optimized_antsMultivariateTemplateConstruction])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([jacobian-smooth],[],[Comma separated list of smoothing gaussian FWHM, append "vox" for voxels, "mm" for millimeters],[4vox])
+# ARG_OPTIONAL_SINGLE([walltime],[],[Walltime for short running stages (averaging, resampling)],[00:15:00])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
-# ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per subject, comma separated scans per subject],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
+# ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per subject, comma separated scans per subject],[])
 # ARG_LEFTOVERS([Arguments to be passed to modelbuild.sh without validation])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
@@ -38,6 +39,7 @@ _arg_leftovers=()
 # THE DEFAULTS INITIALIZATION - OPTIONALS
 _arg_output_dir="output"
 _arg_jacobian_smooth="4vox"
+_arg_walltime="00:15:00"
 _arg_debug="off"
 _arg_dry_run="off"
 
@@ -45,12 +47,13 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A wrapper to enable two-level (aka longitudinal) DBM using optimized_antsMultivariateTemplateConstruction"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per subject, comma separated scans per subject"
   printf '\t%s\n' "... : Arguments to be passed to modelbuild.sh without validation"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
   printf '\t%s\n' "--jacobian-smooth: Comma separated list of smoothing gaussian FWHM, append \"vox\" for voxels, \"mm\" for millimeters (default: '4vox')"
+  printf '\t%s\n' "--walltime: Walltime for short running stages (averaging, resampling) (default: '00:15:00')"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
@@ -86,6 +89,14 @@ parse_commandline()
         ;;
       --jacobian-smooth=*)
         _arg_jacobian_smooth="${_key##--jacobian-smooth=}"
+        ;;
+      --walltime)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_walltime="$2"
+        shift
+        ;;
+      --walltime=*)
+        _arg_walltime="${_key##--walltime=}"
         ;;
       --no-debug|--debug)
         _arg_debug="on"
@@ -152,6 +163,7 @@ _datetime=$(date -u +%F_%H-%M-%S-UTC)
 # Setup a directory which contains all commands run
 # for this invocation
 mkdir -p ${_arg_output_dir}/jobs/${_datetime}
+mkdir -p ${_arg_output_dir}/secondlevel/jobs/${_datetime}
 
 # Store the full command line for each run
 echo ${__invocation} >${_arg_output_dir}/jobs/${_datetime}/invocation
@@ -160,8 +172,10 @@ echo ${__invocation} >${_arg_output_dir}/jobs/${_datetime}/invocation
 
 # Process Second Level DBM
 info "Processing between-subject DBM outputs"
-debug "${__dir}/dbm.sh ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
-${__dir}/dbm.sh ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
+debug "${__dir}/dbm.sh ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${_datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
+if [[ ${_arg_dry_run} == "off" ]]; then
+  ${__dir}/dbm.sh ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${_datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
+fi
 mkdir -p ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/{full,relative}/smooth
 mkdir -p ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/{full,relative}/smooth
 
@@ -175,83 +189,118 @@ while read -r subject_scans; do
 
   IFS=',' read -r -a scans <<<${subject_scans}
   if [[ $(wc -l < ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt) -gt 1 ]]; then
-    debug "${__dir}/dbm.sh ${_arg_leftovers[@]} --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
-    ${__dir}/dbm.sh ${_arg_leftovers[@]} --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
+    debug "${__dir}/dbm.sh ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${_datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
+    if [[ ${_arg_dry_run} == "off" ]]; then
+      ${__dir}/dbm.sh ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${_datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
+    fi
 
     for scan in "${scans[@]}"; do
-      info ${scan}
+      info "Generating resampled jacobians"
       # Resample within-subject into common space
       if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan}) ]]; then
-        antsApplyTransforms -d 3 --verbose \
+        echo "antsApplyTransforms -d 3 --verbose \
           -r ${_arg_output_dir}/secondlevel/final/average/template_sharpen_shapeupdate.nii.gz \
           -i ${_arg_output_dir}/firstlevel/subject_${i}/dbm/jacobian/full/$(basename ${scan}) \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_1Warp.nii.gz \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_0GenericAffine.mat \
-          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan})
+          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan})"
       fi
       if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan}) ]]; then
-        antsApplyTransforms -d 3 --verbose \
+        echo "antsApplyTransforms -d 3 --verbose \
           -r ${_arg_output_dir}/secondlevel/final/average/template_sharpen_shapeupdate.nii.gz \
           -i ${_arg_output_dir}/firstlevel/subject_${i}/dbm/jacobian/relative/$(basename ${scan}) \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_1Warp.nii.gz \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_0GenericAffine.mat \
-          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan})
+          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan})"
       fi
+    done >>${_arg_output_dir}/secondlevel/jobs/${_datetime}/resample_jacobian
+
+    for scan in "${scans[@]}"; do
+      info "Generating overall jacobians"
       # Generate Overall Jacobians
       if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) ]]; then
-      ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) + \
-        ${_arg_output_dir}/secondlevel/dbm/jacobian/full/subject_${i}.nii.gz \
-        ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan})
+        echo "ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) + \
+          ${_arg_output_dir}/secondlevel/dbm/jacobian/full/subject_${i}.nii.gz \
+          ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan})"
       fi
       if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) ]]; then
-      ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) + \
-        ${_arg_output_dir}/secondlevel/dbm/jacobian/relative/subject_${i}.nii.gz \
-        ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan})
+        echo "ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) + \
+          ${_arg_output_dir}/secondlevel/dbm/jacobian/relative/subject_${i}.nii.gz \
+          ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan})"
       fi
+    done >>${_arg_output_dir}/secondlevel/jobs/${_datetime}/overall_jacobian
 
+    for scan in "${scans[@]}"; do
       # Smooth jacobians files
       info "Smoothing Jacobians"
-        for fwhm in "${_arg_jacobian_smooth_list[@]}"; do
-          sigma_num=$(calc "$(echo ${fwhm} | grep -o -E '^[0-9]+')/(2*sqrt(2*log(2)))")
-          if [[ ${fwhm} =~ [0-9]+mm$ ]]; then
-            fwhm_type=1
-          elif [[ ${fwhm} =~ [0-9]+vox$ ]]; then
-            fwhm_type=0
-          else
-            failure "Parse error for FWHM entry \"${fwhm}\", must end with vox or mm"
-          fi
-          if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
-            SmoothImage 3 \
-              ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan}) \
-              ${sigma_num} \
-              ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
-          fi
-          if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
-            SmoothImage 3 \
-              ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan}) \
-              ${sigma_num} \
-              ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
-          fi
-          if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
-            SmoothImage 3 \
-              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) \
-              ${sigma_num} \
-              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
-          fi
-          if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
-            SmoothImage 3 \
-              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) \
-              ${sigma_num} \
-              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
-          fi
-        done
-    done
+      for fwhm in "${_arg_jacobian_smooth_list[@]}"; do
+        sigma_num=$(calc "$(echo ${fwhm} | grep -o -E '^[0-9]+')/(2*sqrt(2*log(2)))")
+        if [[ ${fwhm} =~ [0-9]+mm$ ]]; then
+          fwhm_type=1
+        elif [[ ${fwhm} =~ [0-9]+vox$ ]]; then
+          fwhm_type=0
+        else
+          failure "Parse error for FWHM entry \"${fwhm}\", must end with vox or mm"
+        fi
+        if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+          echo "SmoothImage 3 \
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan}) \
+            ${sigma_num} \
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+        fi
+        if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+          echo "SmoothImage 3 \
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan}) \
+            ${sigma_num} \
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+        fi
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+          echo "SmoothImage 3 \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) \
+            ${sigma_num} \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+        fi
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+          echo "SmoothImage 3 \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) \
+            ${sigma_num} \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+        fi
+      done
+    done >>${_arg_output_dir}/secondlevel/jobs/${_datetime}/smooth_jacobian
 
   else
     info "Subject ${i} has only a single file, "${scans[@]}", and does not have a subject wise average, it will only have second-level cross sectional DBM"
   fi
 
+  debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${_datetime}/resample_jacobian)"
+  if [[ ${_arg_dry_run} == "off" ]]; then
+    qbatch --logdir ${_arg_output_dir}/secondlevel/logs \
+      --walltime ${_arg_walltime} \
+      -N dbm_twolevel_${_datetime}_resample_jacobian \
+      --depend "dbm_twolevel_${_datetime}*" \
+      ${_arg_output_dir}/secondlevel/jobs/${_datetime}/resample_jacobian
+  fi
 
+  debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${_datetime}/overall_jacobian)"
+  if [[ ${_arg_dry_run} == "off" ]]; then
+    qbatch --logdir ${_arg_output_dir}/secondlevel/logs \
+      --walltime ${_arg_walltime} \
+      -N dbm_twolevel_${_datetime}_overall_jacobian \
+      --depend "dbm_twolevel_${_datetime}_resample_jacobian" \
+      ${_arg_output_dir}/secondlevel/jobs/${_datetime}/overall_jacobian
+  fi
+
+  debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${_datetime}/smooth_jacobian)"
+  if [[ ${_arg_dry_run} == "off" ]]; then
+    qbatch --logdir ${_arg_output_dir}/secondlevel/logs \
+      --walltime ${_arg_walltime} \
+      -N dbm_twolevel_${_datetime}_smooth_jacobian \
+      --depend "dbm_twolevel_${_datetime}*" \
+      --depend "dbm_twolevel_${_datetime}_resample_jacobian" \
+      --depend "dbm_twolevel_${_datetime}_overall_jacobian" \
+      ${_arg_output_dir}/secondlevel/jobs/${_datetime}/smooth_jacobian
+  fi
 
   ((++i))
 done < ${_arg_inputs}
