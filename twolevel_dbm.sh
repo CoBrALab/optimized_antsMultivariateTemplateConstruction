@@ -197,36 +197,36 @@ while read -r subject_scans; do
     for scan in "${scans[@]}"; do
       info "Generating resampled jacobians"
       # Resample within-subject into common space
-      if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan}) ]]; then
+      if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz ]]; then
         echo "antsApplyTransforms -d 3 --verbose \
           -r ${_arg_output_dir}/secondlevel/final/average/template_sharpen_shapeupdate.nii.gz \
-          -i ${_arg_output_dir}/firstlevel/subject_${i}/dbm/jacobian/full/$(basename ${scan}) \
+          -i ${_arg_output_dir}/firstlevel/subject_${i}/dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_1Warp.nii.gz \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_0GenericAffine.mat \
-          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan})"
+          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz"
       fi
-      if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan}) ]]; then
+      if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz ]]; then
         echo "antsApplyTransforms -d 3 --verbose \
           -r ${_arg_output_dir}/secondlevel/final/average/template_sharpen_shapeupdate.nii.gz \
-          -i ${_arg_output_dir}/firstlevel/subject_${i}/dbm/jacobian/relative/$(basename ${scan}) \
+          -i ${_arg_output_dir}/firstlevel/subject_${i}/dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_1Warp.nii.gz \
           -t ${_arg_output_dir}/secondlevel/final/transforms/subject_${i}_0GenericAffine.mat \
-          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan})"
+          -o ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz"
       fi
     done >>${_arg_output_dir}/secondlevel/jobs/${_datetime}/resample_jacobian
 
     for scan in "${scans[@]}"; do
       info "Generating overall jacobians"
       # Generate Overall Jacobians
-      if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) ]]; then
-        echo "ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) + \
+      if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz ]]; then
+        echo "ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz + \
           ${_arg_output_dir}/secondlevel/dbm/jacobian/full/subject_${i}.nii.gz \
-          ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan})"
+          ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz"
       fi
-      if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) ]]; then
-        echo "ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) + \
+      if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz ]]; then
+        echo "ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz + \
           ${_arg_output_dir}/secondlevel/dbm/jacobian/relative/subject_${i}.nii.gz \
-          ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan})"
+          ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz"
       fi
     done >>${_arg_output_dir}/secondlevel/jobs/${_datetime}/overall_jacobian
 
@@ -242,29 +242,29 @@ while read -r subject_scans; do
         else
           failure "Parse error for FWHM entry \"${fwhm}\", must end with vox or mm"
         fi
-        if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+        if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
           echo "SmoothImage 3 \
-            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan}) \
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz \
             ${sigma_num} \
-            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
         fi
-        if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+        if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
           echo "SmoothImage 3 \
-            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan}) \
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz \
             ${sigma_num} \
-            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+            ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
         fi
-        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
           echo "SmoothImage 3 \
-            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan}) \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz \
             ${sigma_num} \
-            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
         fi
-        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
           echo "SmoothImage 3 \
-            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan}) \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz \
             ${sigma_num} \
-            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
         fi
       done
     done >>${_arg_output_dir}/secondlevel/jobs/${_datetime}/smooth_jacobian

@@ -282,9 +282,9 @@ _arg_log_jacobian=1
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
 info "Computing Jacobians from non-linear warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
 
@@ -299,11 +299,11 @@ fi
 # Generate warp field from affine transform
 info "Computing warp fields from affine transforms"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
       -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
-      -o [ ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}),1 ]"
+      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
+      -o [ ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/affine_warp
 
@@ -320,9 +320,9 @@ fi
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
 info "Computing Jacobians from affine warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file}) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file}) ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/affine_jacobian
 
@@ -365,9 +365,9 @@ fi
 # Generate delin affine from warp field
 info "Estimate delin affine from nlin warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat ]]; then
-    echo "ANTSUseDeformationFieldToGetAffineTransform ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-      ${_arg_delin_affine_ratio} affine ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat ]]; then
+    echo "ANTSUseDeformationFieldToGetAffineTransform ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz \
+      ${_arg_delin_affine_ratio} affine ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat \
       ${_arg_mask}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp
@@ -384,11 +384,11 @@ fi
 # Generate warp from delin affine
 info "Generate composite warp field from delin affine"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
       -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t [ ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat,1 ] \
-      -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}),1 ]"
+      -t [ ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat,1 ] \
+      -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine
 
@@ -404,9 +404,9 @@ fi
 # Generate jacobians from delin warp field
 info "Computing Jacobians from delin affine warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file}) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file}) ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp
 
@@ -422,11 +422,11 @@ fi
 # Generate final full jacobians
 info "Generating Full Jacobians"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
-      ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file}) \
-      + ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file)"
+      ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz \
+      + ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian
 
@@ -443,11 +443,11 @@ fi
 # Generate final relative jacobians
 info "Generating Relative Jacobians"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
-      ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file}) \
-      + ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file)"
+      ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz \
+      + ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian
 
@@ -473,17 +473,17 @@ for file in "${_arg_inputs[@]}"; do
     else
       failure "Parse error for FWHM entry \"${fwhm}\", must end with vox or mm"
     fi
-    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
       echo SmoothImage 3 \
-        ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file}) \
+        ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz \
         ${sigma_num} \
-        ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
+        ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
     fi
-    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
       echo SmoothImage 3 \
-        ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file}) \
+        ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz \
         ${sigma_num} \
-        ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
+        ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
     fi
   done
 done >${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian

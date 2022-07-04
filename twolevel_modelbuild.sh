@@ -181,15 +181,15 @@ while read -r subject_scans; do
     info "Subject ${i} has only a single scan and will not have a subject wise average, it will be included in the second level model build"
     mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}/final/{transforms,resample,average}
     ln -sfr $(realpath ${scans[0]}) ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz
-    ImageMath 3 ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat MakeAffineTransform 1
-    CreateImage 3 ${scans[0]} ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz 0
+    ImageMath 3 ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_0GenericAffine.mat MakeAffineTransform 1
+    CreateImage 3 ${scans[0]} ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1Warp.nii.gz 0
     CreateDisplacementField 3 0 \
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz
-    cp -f ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1InverseWarp.nii.gz \
-      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1Warp.nii.gz \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1Warp.nii.gz \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1Warp.nii.gz \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1InverseWarp.nii.gz
+    cp -f ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1InverseWarp.nii.gz \
+      ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1Warp.nii.gz
   fi
   ((++i))
 done < ${_arg_inputs}

@@ -108,3 +108,8 @@ function run_smart {
     "$2"
   fi
 }
+
+function extension_strip()
+{
+  sed -r 's/(.nii$|.nii.gz|.nrrd|.mnc|.mnc.gz)$//'
+}
