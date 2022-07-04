@@ -10,6 +10,7 @@
 # ARG_OPTIONAL_BOOLEAN([block],[],[For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished.],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
+# ARG_OPTIONAL_SINGLE([jobname-prefix],[],[Prefix to add to front of job names, used by twolevel wrapper],[])
 # ARG_POSITIONAL_INF([inputs],[Input text files, one line per input, one file per spectra],[1])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
@@ -49,12 +50,13 @@ _arg_walltime="00:15:00"
 _arg_block="off"
 _arg_debug="off"
 _arg_dry_run="off"
+_arg_jobname_prefix=
 
 
 print_help()
 {
   printf '%s\n' "DBM post-processing for optimized_antsMultivariateTemplateConstruction"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -67,6 +69,7 @@ print_help()
   printf '\t%s\n' "--block, --no-block: For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
+  printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
 }
 
 
@@ -145,6 +148,14 @@ parse_commandline()
         _arg_dry_run="on"
         test "${1:0:5}" = "--no-" && _arg_dry_run="off"
         ;;
+      --jobname-prefix)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_jobname_prefix="$2"
+        shift
+        ;;
+      --jobname-prefix=*)
+        _arg_jobname_prefix="${_key##--jobname-prefix=}"
+        ;;
       *)
         _last_positional="$1"
         _positionals+=("$_last_positional")
@@ -194,114 +205,9 @@ assign_positional_args 1 "${_positionals[@]}"
 set -euo pipefail
 export QBATCH_SCRIPT_FOLDER="${_arg_output_dir}/qbatch/"
 
-# Calculator for maths
-calc () { awk "BEGIN{ print $* }" ;}
-
-### BASH HELPER FUNCTIONS ###
-# Stolen from https://github.com/kvz/bash3boilerplate
-
-# Set magic variables for current file, directory, os, etc.
-__dir="$(cd "$(dirname "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")" && pwd)"
-__file="${__dir}/$(basename "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")"
-__base="$(basename "${__file}" .sh)"
-# shellcheck disable=SC2034,SC2015
-__invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
-
-if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
-  LOG_LEVEL=7
-else
-  LOG_LEVEL=6
-fi
-
-function __b3bp_log() {
-  local log_level="${1}"
-  shift
-
-  # shellcheck disable=SC2034
-  local color_debug="\\x1b[35m" #]
-  # shellcheck disable=SC2034
-  local color_info="\\x1b[32m" #]
-  # shellcheck disable=SC2034
-  local color_notice="\\x1b[34m" #]
-  # shellcheck disable=SC2034
-  local color_warning="\\x1b[33m" #]
-  # shellcheck disable=SC2034
-  local color_error="\\x1b[31m" #]
-  # shellcheck disable=SC2034
-  local color_critical="\\x1b[1;31m" #]
-  # shellcheck disable=SC2034
-  local color_alert="\\x1b[1;37;41m" #]
-  # shellcheck disable=SC2034
-  local color_failure="\\x1b[1;4;5;37;41m" #]
-
-  local colorvar="color_${log_level}"
-
-  local color="${!colorvar:-${color_error}}"
-  local color_reset="\\x1b[0m" #]
-
-  if [[ "${NO_COLOR:-}" = "true" ]] || { [[ "${TERM:-}" != "xterm"* ]] && [[ "${TERM:-}" != "screen"* ]]; } || [[ ! -t 2 ]]; then
-    if [[ "${NO_COLOR:-}" != "false" ]]; then
-      # Don't use colors on pipes or non-recognized terminals
-      color=""
-      color_reset=""
-    fi
-  fi
-
-  # all remaining arguments are to be printed
-  local log_line=""
-
-  while IFS=$'\n' read -r log_line; do
-    echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") ${color}$(printf "[%9s]" "${log_level}")${color_reset} ${log_line}" 1>&2
-  done <<<"${@:-}"
-}
-
-function failure() {
-  __b3bp_log failure "${@}"
-  exit 1
-}
-function alert() {
-  [[ "${LOG_LEVEL:-0}" -ge 1 ]] && __b3bp_log alert "${@}"
-  true
-}
-function critical() {
-  [[ "${LOG_LEVEL:-0}" -ge 2 ]] && __b3bp_log critical "${@}"
-  true
-}
-function error() {
-  [[ "${LOG_LEVEL:-0}" -ge 3 ]] && __b3bp_log error "${@}"
-  true
-}
-function warning() {
-  [[ "${LOG_LEVEL:-0}" -ge 4 ]] && __b3bp_log warning "${@}"
-  true
-}
-function notice() {
-  [[ "${LOG_LEVEL:-0}" -ge 5 ]] && __b3bp_log notice "${@}"
-  true
-}
-function info() {
-  [[ "${LOG_LEVEL:-0}" -ge 6 ]] && __b3bp_log info "${@}"
-  true
-}
-function debug() {
-  [[ "${LOG_LEVEL:-0}" -ge 7 ]] && __b3bp_log debug "${@}"
-  true
-}
-
-# Add handler for failure to show where things went wrong
-failure_handler() {
-  local lineno=${1}
-  local msg=${2}
-  failure "Failed at ${lineno}: ${msg}"
-}
-trap 'failure_handler ${LINENO} "$BASH_COMMAND"' ERR
-
-function run_smart {
-  # Function runs the command it wraps if the file does not exist
-  if [[ ! -s "$1" ]]; then
-    "$2"
-  fi
-}
+# Load up helper scripts and define helper variables
+# shellcheck source=helpers.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 # Setup a timestamp for prefixing all commands
 _datetime=$(date -u +%F_%H-%M-%S-UTC)
@@ -376,9 +282,12 @@ _arg_log_jacobian=1
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
 info "Computing Jacobians from non-linear warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file) ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz ]]; then
+    failure "Expected deformation file ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz does not exist"
+  fi
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
 
@@ -386,18 +295,18 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_nlin_jacobian \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
     ${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
 fi
 
 # Generate warp field from affine transform
 info "Computing warp fields from affine transforms"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
       -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
-      -o [ ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}),1 ]"
+      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
+      -o [ ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/affine_warp
 
@@ -405,7 +314,7 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/affine_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_affine_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_affine_warp \
     ${_arg_output_dir}/jobs/${_datetime}/affine_warp
 fi
 
@@ -414,9 +323,9 @@ fi
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
 info "Computing Jacobians from affine warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file}) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file}) ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/affine_jacobian
 
@@ -424,8 +333,8 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/affine_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_affine_jacobian \
-    --depend dbm_${_datetime}_affine_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_affine_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_affine_warp \
     ${_arg_output_dir}/jobs/${_datetime}/affine_jacobian
 fi
 
@@ -452,16 +361,16 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_mask)"
 if [[ ${_arg_dry_run} == "off" && -s ${_arg_output_dir}/jobs/${_datetime}/delin_mask ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_delin_mask \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_mask \
     -- bash ${_arg_output_dir}/jobs/${_datetime}/delin_mask
 fi
 
 # Generate delin affine from warp field
 info "Estimate delin affine from nlin warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat ]]; then
-    echo "ANTSUseDeformationFieldToGetAffineTransform ${_arg_output_dir}/final/transforms/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-      ${_arg_delin_affine_ratio} affine ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat ]]; then
+    echo "ANTSUseDeformationFieldToGetAffineTransform ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz \
+      ${_arg_delin_affine_ratio} affine ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat \
       ${_arg_mask}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp
@@ -470,19 +379,19 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_delin_affine_from_warp \
-    --depend dbm_${_datetime}_delin_mask \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_affine_from_warp \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_mask \
     ${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp
 fi
 
 # Generate warp from delin affine
 info "Generate composite warp field from delin affine"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
       -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t [ ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat,1 ] \
-      -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}),1 ]"
+      -t [ ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat,1 ] \
+      -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine
 
@@ -490,17 +399,17 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_delin_warp_from_delin_affine \
-    --depend dbm_${_datetime}_delin_affine_from_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_warp_from_delin_affine \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_affine_from_warp \
     ${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine
 fi
 
 # Generate jacobians from delin warp field
 info "Computing Jacobians from delin affine warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file}) ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file}) ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
+    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp
 
@@ -508,19 +417,19 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_jacobian_from_delin_warp \
-    --depend dbm_${_datetime}_delin_warp_from_delin_affine \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_jacobian_from_delin_warp \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_warp_from_delin_affine \
     ${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp
 fi
 
 # Generate final full jacobians
 info "Generating Full Jacobians"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
-      ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file}) \
-      + ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file)"
+      ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz \
+      + ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian
 
@@ -528,20 +437,20 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_gen_full_jacobian \
-    --depend dbm_${_datetime}_affine_jacobian \
-    --depend dbm_${_datetime}_nlin_jacobian \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_gen_full_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_affine_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
     ${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian
 fi
 
 # Generate final relative jacobians
 info "Generating Relative Jacobians"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file}) ]]; then
+  if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
-      ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file}) \
-      + ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file}) \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename $file)"
+      ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz \
+      + ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz \
+      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
   fi
 done >${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian
 
@@ -549,9 +458,9 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_gen_rel_jacobian \
-    --depend dbm_${_datetime}_nlin_jacobian \
-    --depend dbm_${_datetime}_jacobian_from_delin_warp \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_gen_rel_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_jacobian_from_delin_warp \
     ${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian
 fi
 
@@ -567,17 +476,17 @@ for file in "${_arg_inputs[@]}"; do
     else
       failure "Parse error for FWHM entry \"${fwhm}\", must end with vox or mm"
     fi
-    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
       echo SmoothImage 3 \
-        ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file}) \
+        ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz \
         ${sigma_num} \
-        ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
+        ${_arg_output_dir}/dbm/jacobian/full/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
     fi
-    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ]]; then
+    if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
       echo SmoothImage 3 \
-        ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file}) \
+        ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz \
         ${sigma_num} \
-        ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g')_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
+        ${_arg_output_dir}/dbm/jacobian/relative/smooth/$(basename ${file} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0
     fi
   done
 done >${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian
@@ -586,9 +495,9 @@ debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
     --walltime ${_arg_walltime} \
-    -N dbm_${_datetime}_smooth_jacobian \
-    --depend dbm_${_datetime}_gen_full_jacobian \
-    --depend dbm_${_datetime}_gen_rel_jacobian \
+    -N ${_arg_jobname_prefix}dbm_${_datetime}_smooth_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_gen_full_jacobian \
+    --depend ${_arg_jobname_prefix}dbm_${_datetime}_gen_rel_jacobian \
     ${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian
 fi
 
