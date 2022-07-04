@@ -282,6 +282,9 @@ _arg_log_jacobian=1
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
 info "Computing Jacobians from non-linear warp fields"
 for file in "${_arg_inputs[@]}"; do
+  if [[ ! -s ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz ]]; then
+    failure "Expected deformation file ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz does not exist"
+  fi
   if [[ ! -s ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz \
       ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
