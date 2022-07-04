@@ -279,7 +279,7 @@ while read -r subject_scans; do
 
   debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${_datetime}/resample_jacobian)"
   if [[ ${_arg_dry_run} == "off" ]]; then
-    qbatch --logdir ${_arg_output_dir}/secondlevel/logs \
+    qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${_datetime} \
       --walltime ${_arg_walltime} \
       -N dbm_twolevel_${_datetime}_resample_jacobian \
       --depend "dbm_twolevel_${_datetime}*" \
@@ -288,7 +288,7 @@ while read -r subject_scans; do
 
   debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${_datetime}/overall_jacobian)"
   if [[ ${_arg_dry_run} == "off" ]]; then
-    qbatch --logdir ${_arg_output_dir}/secondlevel/logs \
+    qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${_datetime} \
       --walltime ${_arg_walltime} \
       -N dbm_twolevel_${_datetime}_overall_jacobian \
       --depend "dbm_twolevel_${_datetime}_resample_jacobian" \
@@ -297,7 +297,7 @@ while read -r subject_scans; do
 
   debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${_datetime}/smooth_jacobian)"
   if [[ ${_arg_dry_run} == "off" ]]; then
-    qbatch --logdir ${_arg_output_dir}/secondlevel/logs \
+    qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${_datetime} \
       --walltime ${_arg_walltime} \
       -N dbm_twolevel_${_datetime}_smooth_jacobian \
       --depend "dbm_twolevel_${_datetime}*" \

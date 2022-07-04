@@ -521,7 +521,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
           --walltime ${_arg_walltime_short} \
           -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage \
           -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage
@@ -555,7 +555,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
           --walltime ${_arg_walltime_short} \
           -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_dumb \
           -- bash ${_arg_output_dir}/jobs/${_datetime}/initialaverage_dumb
@@ -627,17 +627,17 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/initialaverage_com)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
           --walltime ${_arg_walltime_short} \
           -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_reg_com \
           ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_dumb \
           ${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
           --walltime ${_arg_walltime_short} \
           -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_resample_com \
           ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_reg_com \
           ${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
           --walltime ${_arg_walltime_short} \
           -N ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_com \
           ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_initialaverage_resample_com \
@@ -802,13 +802,13 @@ for reg_type in "${_arg_stages[@]}"; do
       debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage)"
 
       if [[ ${_arg_dry_run} == "off" ]]; then
-        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+        qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
           --walltime ${walltime_reg} \
           -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_reg \
           ${last_round_job} \
           ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample ]]; then
-          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
             --walltime ${_arg_walltime_short} \
             -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskresample \
             ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_reg* \
@@ -817,7 +817,7 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
         # Need a special test here in case jobfile is empty
         if [[ -s ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage ]]; then
-          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
             --walltime ${_arg_walltime_short} \
             -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
             ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskresample* \
@@ -968,7 +968,7 @@ for reg_type in "${_arg_stages[@]}"; do
         debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate)"
 
         if [[ ${_arg_dry_run} == "off" ]]; then
-          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+          qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
             --walltime ${_arg_walltime_short} -N ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_shapeupdate \
             ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_reg \
             ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${_datetime}_${reg_type}_${i}_maskaverage \
