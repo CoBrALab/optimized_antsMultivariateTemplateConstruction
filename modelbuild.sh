@@ -401,12 +401,21 @@ else
   mapfile -t _arg_inputs <${_arg_inputs[0]}
 fi
 
-if [[ ${_arg_skip_file_checks} == "off" ]]; then
-  for file in "${_arg_inputs[@]}"; do
+input_filenames_for_dup_check=()
+
+for file in "${_arg_inputs[@]}"; do
+  input_filenames_for_dup_check+=($(basename ${file}))
+  if [[ ${_arg_skip_file_checks} == "off" ]]; then
     if [[ ! -s ${file} ]]; then
       failure "Input file ${file} is non-existent or zero size"
     fi
-  done
+  fi
+done
+
+#Check for duplicate filenames
+IFS=$'\n' duplicates=$(sort <<<"${input_filenames_for_dup_check[*]}" | uniq -d)
+if [[ ! -z ${duplicates} ]]; then
+  failure "The following filenames are duplicated in the input file, file names must be unique \n ${duplicates}"
 fi
 
 # Fill up array of masks
