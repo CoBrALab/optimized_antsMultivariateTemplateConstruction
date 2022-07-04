@@ -293,7 +293,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
     ${_arg_output_dir}/jobs/${_datetime}/nlin_jacobian
@@ -312,7 +312,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/affine_warp
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/affine_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_affine_warp \
     ${_arg_output_dir}/jobs/${_datetime}/affine_warp
@@ -331,7 +331,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/affine_jacobian
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/affine_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_affine_jacobian \
     --depend ${_arg_jobname_prefix}dbm_${_datetime}_affine_warp \
@@ -359,7 +359,7 @@ fi >${_arg_output_dir}/jobs/${_datetime}/delin_mask
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_mask)"
 if [[ ${_arg_dry_run} == "off" && -s ${_arg_output_dir}/jobs/${_datetime}/delin_mask ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_mask \
     -- bash ${_arg_output_dir}/jobs/${_datetime}/delin_mask
@@ -377,7 +377,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_affine_from_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_affine_from_warp \
     --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_mask \
@@ -397,7 +397,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/delin_warp_from_delin_affine)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_delin_warp_from_delin_affine \
     --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_affine_from_warp \
@@ -415,7 +415,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/jacobian_from_delin_warp)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_jacobian_from_delin_warp \
     --depend ${_arg_jobname_prefix}dbm_${_datetime}_delin_warp_from_delin_affine \
@@ -435,7 +435,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/gen_full_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_gen_full_jacobian \
     --depend ${_arg_jobname_prefix}dbm_${_datetime}_affine_jacobian \
@@ -456,7 +456,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/gen_rel_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_gen_rel_jacobian \
     --depend ${_arg_jobname_prefix}dbm_${_datetime}_nlin_jacobian \
@@ -493,7 +493,7 @@ done >${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian
 
 debug "$(cat ${_arg_output_dir}/jobs/${_datetime}/smooth_jacobian)"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs \
+  qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${_datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${_datetime}_smooth_jacobian \
     --depend ${_arg_jobname_prefix}dbm_${_datetime}_gen_full_jacobian \
