@@ -18,7 +18,7 @@
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
 # ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
 # ARG_OPTIONAL_SINGLE([stages],[],[Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting],[rigid,similarity,affine,nlin])
-# ARG_OPTIONAL_BOOLEAN([reuse-affines],[],[Reuse affines from previous stage/iteration to initialize next stage],[on])
+# ARG_OPTIONAL_BOOLEAN([reuse-affines],[],[Reuse affines from previous stage/iteration to initialize next stage],[off])
 # ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:30:00])
 # ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:45:00])
 # ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[4:30:00])
@@ -96,7 +96,7 @@ _arg_sharpen_type="unsharp"
 _arg_masks=
 _arg_mask_extract="off"
 _arg_stages="rigid,similarity,affine,nlin"
-_arg_reuse_affines="on"
+_arg_reuse_affines="off"
 _arg_walltime_short="00:30:00"
 _arg_walltime_linear="0:45:00"
 _arg_walltime_nonlinear="4:30:00"
@@ -130,7 +130,7 @@ print_help()
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
   printf '\t%s\n' "--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)"
   printf '\t%s\n' "--stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')"
-  printf '\t%s\n' "--reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (on by default)"
+  printf '\t%s\n' "--reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (off by default)"
   printf '\t%s\n' "--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')"
   printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:45:00')"
   printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')"
@@ -708,7 +708,7 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
 
         # If three was a previous round of modelbuilding, bootstrap registration with it's affine
-        if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && ${_arg_reuse_affines} == "on" ]]; then
+        if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ${_arg_reuse_affines} == "on" ]]; then
           bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
         else
           bootstrap=""
