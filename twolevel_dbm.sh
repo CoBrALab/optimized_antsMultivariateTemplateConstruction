@@ -168,7 +168,11 @@ mkdir -p ${_arg_output_dir}/secondlevel/jobs/${_datetime}
 # Store the full command line for each run
 echo ${__invocation} >${_arg_output_dir}/jobs/${_datetime}/invocation
 
-
+while read -r file; do
+  if [[ ! -s ${file} ]]; then
+    failure "Input file ${file} does not exist"
+  fi
+done <  ${_arg_output_dir}/secondlevel/input_files.txt
 
 # Process Second Level DBM
 info "Processing between-subject DBM outputs"
