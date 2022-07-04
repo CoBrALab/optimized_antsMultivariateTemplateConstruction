@@ -566,29 +566,29 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       for file in "${_arg_inputs[@]}"; do
         echo antsAI -d 3 --convergence 0 \
           -m Mattes[${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz,${file},32,None] \
-          -o ${_arg_output_dir}/initialaverage/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
+          -o ${_arg_output_dir}/initialaverage/$(basename ${file} | extension_strip).mat \
           -t AlignCentersOfMass >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_reg_com
       done
 
       for file in "${_arg_inputs[@]}"; do
         echo antsApplyTransforms -d 3 -i ${file} -r ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz \
-          -t ${_arg_output_dir}/initialaverage/$(basename ${file} | sed -r 's/(.nii$|.nii.gz$)//g').mat \
-          -o ${_arg_output_dir}/initialaverage/$(basename ${file}) >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
+          -t ${_arg_output_dir}/initialaverage/$(basename ${file} | extension_strip).mat \
+          -o ${_arg_output_dir}/initialaverage/$(basename ${file} | extension_strip).nii.gz >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_resample_com
       done
 
       case ${_arg_average_type} in
       mean)
         echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 0 \
-          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
           >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
         ;;
       normmean)
         echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 2 \
-          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]}) "; done) \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
           >>${_arg_output_dir}/jobs/${_datetime}/initialaverage_com
         ;;
       median)
-        for j in "${!_arg_inputs[@]}"; do echo "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]})"; done \
+        for j in "${!_arg_inputs[@]}"; do echo "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz"; done \
           >${_arg_output_dir}/medianlist.txt
         echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt \
           ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz 0 \
@@ -709,11 +709,11 @@ for reg_type in "${_arg_stages[@]}"; do
 
         # If three was a previous round of modelbuilding, bootstrap registration with it's affine
         if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && ${_arg_reuse_affines} == "on" ]]; then
-          bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat"
+          bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
         else
           bootstrap=""
         fi
-        if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) ]]; then
+        if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz ]]; then
           if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
             # Linear stages of registration
             walltime_reg=${_arg_walltime_linear}
@@ -723,55 +723,55 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
               --convergence ${_arg_convergence} \
-              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
               ${_arg_inputs[${j}]} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
               >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           elif [[ ${reg_type} == "nlin" ]]; then
             # Full regisration affine + nlin
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
-              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}  | extension_strip).nii.gz \
               ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
               --convergence ${_arg_convergence} \
               ${_arg_inputs[${j}]} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
               >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           else
             # Non-linear only
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
-              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
               ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
               --skip-linear \
               --convergence ${_arg_convergence} \
               ${_arg_inputs[${j}]} ${target} \
-              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_ \
+              ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
               >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_reg
           fi
         fi
         # If input masks were provided, resample them using the registration
-        if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) && -s ${_arg_masks[${j}]} ]]; then
+        if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz && -s ${_arg_masks[${j}]} ]]; then
           if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
             echo antsApplyTransforms -d 3 ${_arg_float} \
               -i ${_arg_masks[${j}]} \
               -n GenericLabel \
-              -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
-              -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
-              -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
+              -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+              -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
               >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
           else
             echo antsApplyTransforms -d 3 ${_arg_float} \
               -i ${_arg_masks[${j}]} \
               -n GenericLabel \
-              -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) \
-              -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz \
-              -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat \
-              -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) \
+              -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+              -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_1Warp.nii.gz \
+              -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
+              -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
               >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskresample
           fi
         fi
@@ -783,7 +783,7 @@ for reg_type in "${_arg_stages[@]}"; do
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0 \
             $(for j in "${!_arg_inputs[@]}"; do
               if [[ -s ${_arg_masks[${j}]} ]]; then
-                echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]}) "
+                echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "
               fi
               ((++j))
             done) >${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_maskaverage
@@ -838,16 +838,16 @@ for reg_type in "${_arg_stages[@]}"; do
         case ${_arg_average_type} in
         mean)
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
+            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
             >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
           ;;
         normmean)
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-            2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done) \
+            2 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
             >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
           ;;
         median)
-          for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}) "; done >${_arg_output_dir}/medianlist.txt
+          for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done >${_arg_output_dir}/medianlist.txt
           echo ImageSetStatistics 3 ${_arg_output_dir}/medianlist.txt ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0 \
             >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
           ;;
@@ -883,14 +883,14 @@ for reg_type in "${_arg_stages[@]}"; do
 
         # Average all the affine transforms
         echo ${AVERAGE_AFFINE_PROGRAM} 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_0GenericAffine.mat "; done) \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
           >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
         # Now we update the template shape using the same steps as the original code
         if [[ ${reg_type} == "nlin" || ${reg_type} == "nlin-only" ]]; then
           # Average all the warp transforms
           echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
-            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | sed -r 's/(.nii$|.nii.gz$)//g')_1Warp.nii.gz "; done) \
+            0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_1Warp.nii.gz "; done) \
             >>${_arg_output_dir}/jobs/${_datetime}/${reg_type}_${i}_shapeupdate
 
           # Scale warp average by the gradient step (note the gradient step is negative!!)
