@@ -28,7 +28,7 @@ and driven by [`ants_generate_iterations.py`](https://github.com/CoBrALab/minc-t
 - Interpolation using `BSpline[5]` transforms where applicable
 - Staged template construction using progressively higher-order transform types
 (rigid, similarity, affine, nlin)
-- affine transforms at later stages are bootstrapped from prior stages to reduce
+- (optional) affine transforms at later stages are bootstrapped from prior stages to reduce
 computational load
 - some defaults have been changed compared to `antsMultivariateTemplateConstruction2.sh`
   - affine transforms are averaged without rigid component
@@ -69,7 +69,7 @@ been updated
 ```bash
 $ ./modelbuild.sh --help
 A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
-Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text files, one line per input, one file per spectra
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
@@ -88,10 +88,13 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --masks: File containing mask filenames, one file per line (no default)
         --mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)
         --stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')
-        --reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (on by default)
+        --reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (off by default)
         --walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')
         --walltime-linear: Walltime for linear registration stages (default: '0:45:00')
         --walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')
+        --jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)
+        --job-predepend: Job name dependency pattern to prepend to all jobs, used by twolevel wrapper (no default)
+        --skip-file-checks, --no-skip-file-checks: Skip preflight checking of existence of files, used by twolevel wrapper (off by default)
         --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
@@ -102,6 +105,20 @@ per path to an input file
 
 ```bash
 $ ./modelbuild.sh input.txt
+```
+
+## Two-level wrapper
+
+```bash
+A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction
+Usage: ./twolevel_modelbuild.sh [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... 
+        <inputs>: Input text files, one line per subject, comma separated scans per subject
+        ... : Arguments to be passed to modelbuild.sh without validation
+        -h, --help: Prints help
+        --output-dir: Output directory for modelbuild (default: 'output')
+        --masks: File containing mask filenames, identical to inputs in structure (no default)
+        --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
+        --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
 ```
 
 ## Deformation Based Morphometry (DBM)
@@ -120,10 +137,11 @@ $ ./dbm.sh input.txt
 ```
 
 Complete run options
+
 ```bash
 $ ./dbm.sh --help
 DBM post-processing for optimized_antsMultivariateTemplateConstruction
-Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text files, one line per input, one file per spectra
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
@@ -134,6 +152,22 @@ Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [
         --jacobian-smooth: Comma separated list of smoothing gaussian FWHM, append "vox" for voxels, "mm" for millimeters (default: '4vox')
         --walltime: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
         --block, --no-block: For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
+        --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
+        --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
+        --jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)
+```
+
+### Two-level DBM wrapper
+
+```bash
+A wrapper to enable two-level (aka longitudinal) DBM using optimized_antsMultivariateTemplateConstruction
+Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... 
+        <inputs>: Input text files, one line per subject, comma separated scans per subject
+        ... : Arguments to be passed to modelbuild.sh without validation
+        -h, --help: Prints help
+        --output-dir: Output directory for modelbuild (default: 'output')
+        --jacobian-smooth: Comma separated list of smoothing gaussian FWHM, append "vox" for voxels, "mm" for millimeters (default: '4vox')
+        --walltime: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
 ```
