@@ -17,7 +17,7 @@ if __name__ == "__main__":
                         Specify a list of input files, space-seperated (i.e. file1 file2 ...).
                         """)
     parser.add_argument("--image_type", default='image',
-                        choices=['image', 'affine', 'warp'],
+                        choices=['image', 'warp'],
                         help="""
                         Specify whether the type of image is a nifti structural image,
                         or a set of affine or non-linear (warp) transforms.
@@ -27,7 +27,7 @@ if __name__ == "__main__":
                         help="""
                         Specify of average method to create from the image list.
                         """)
-    parser.add_argument("--trim_percent", type=float, default=15,
+    parser.add_argument("--trim_percent", type=float, default=0.15,
                         help="""
                         Specify % to trim off if using trimmed_mean.
                         """)
@@ -36,23 +36,19 @@ if __name__ == "__main__":
                         Whether to divide each image by its mean before computing average.
                         """)
     opts = parser.parse_args()
-    output = os.path.abspath(opts.output)
 
     if len(opts.file_list)==1:
         print("ONLY ONE INPUT PROVIDED TO --file_list. THE OUTPUT IS THE INPUT.")
-        sitk.WriteImage(sitk.ReadImage(opts.file_list[0]), output)
-        quit()
+        sitk.WriteImage(sitk.ReadImage(opts.file_list[0]), opts.output)
+        import sys
+        sys.exit()
 
-    # takes a average out of the array values from a list of Niftis
+    # takes an average out of the array values from a list of Niftis
     array_list = []
     for file in opts.file_list:
-        if os.path.isfile(file) and (opts.image_type=='warp' or opts.image_type=='image'):
-            array = sitk.GetArrayFromImage(sitk.ReadImage(file))
-        elif os.path.isfile(file) and opts.image_type=='affine':
-            transform = sitk.ReadTransform(file)
-            array = np.array(transform.GetParameters())
-        else:
-            continue
+        if not os.path.isfile(file):
+            raise ValueError(f"The provided file {file} does not exist.")
+        array = sitk.GetArrayFromImage(sitk.ReadImage(file))
         shape = array.shape # we assume all inputs have the same shape
         array = array.flatten()
         if opts.normalize: # divide the image values by its mean
@@ -66,21 +62,18 @@ if __name__ == "__main__":
         average = np.median(concat_array,axis=0)
     elif opts.method == 'trimmed_mean':
         from scipy import stats
-        average = stats.trim_mean(concat_array, opts.trim_percent/100, axis=0)
+        average = stats.trim_mean(concat_array, opts.trim_percent, axis=0)
     elif opts.method == 'huber':
         import statsmodels.api as sm
-        average = sm.robust.scale.huber(concat_array)
+        average = sm.robust.scale.huber(concat_array)[0]
 
     average = average.reshape(shape)
 
     if opts.image_type=='image':
         average_img = sitk.GetImageFromArray(average, isVector=False)
         average_img.CopyInformation(sitk.ReadImage(opts.file_list[0]))
-        sitk.WriteImage(average_img, output)
+        sitk.WriteImage(average_img, opts.output)
     elif opts.image_type=='warp':
         average_img = sitk.GetImageFromArray(average, isVector=True)
         average_img.CopyInformation(sitk.ReadImage(opts.file_list[0]))
-        sitk.WriteImage(average_img, output)
-    elif opts.image_type=='affine':
-        transform.SetParameters(average)
-        sitk.WriteTransform(transform, output)
+        sitk.WriteImage(average_img, opts.output)

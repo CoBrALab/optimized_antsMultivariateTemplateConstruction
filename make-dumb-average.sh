@@ -43,6 +43,6 @@ for file in "$@"; do
   quick_com_align ${file} ${template} ${tmpdir}/$(basename ${file})
 done
 
-${SCRIPT_DIR}/modelbuild_averager.py -o ${template} --normalize --image_type image --method ${average_type} --file_list ${tmpdir}/*
+${SCRIPT_DIR}/modelbuild_averager.py -o ${template} --normalize --image_type image --method ${average_type} --trim_percent ${trim_percent} --file_list ${tmpdir}/*
 
 rm -rf ${tmpdir}
