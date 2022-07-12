@@ -1,5 +1,5 @@
 #!/bin/bash
-# ARG_HELP([DBM post-processing for optimized_antsMultivariateTemplateConstruction])
+# ARG_HELP([DBM post-processing for modelbuild.sh from optimized_antsMultivariateTemplateConstruction])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements, reduce precision)],[])
 # ARG_OPTIONAL_SINGLE([mask],[],[Mask file for average to improve delin estimates],[])
@@ -55,7 +55,7 @@ _arg_jobname_prefix=
 
 print_help()
 {
-  printf '%s\n' "DBM post-processing for optimized_antsMultivariateTemplateConstruction"
+  printf '%s\n' "DBM post-processing for modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
   printf '\t%s\n' "-h, --help: Prints help"
