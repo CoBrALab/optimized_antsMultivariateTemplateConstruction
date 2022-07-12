@@ -146,6 +146,10 @@ set -euo pipefail
 # shellcheck source=helpers.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
+if [[ ${_arg_debug} == "off" ]]; then
+  unset ${_arg_debug}
+fi
+
 # Setup a timestamp for prefixing all commands
 _datetime=$(date -u +%F_%H-%M-%S-UTC)
 
@@ -170,8 +174,8 @@ while read -r subject_scans; do
   printf "%s\n" "${scans[@]}" > ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
 
   if [[ ${#scans[@]} -gt 1 ]]; then
-    debug "${__dir}/modelbuild.sh --jobname-prefix "twolevel_${_datetime}_subject_${i}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
-    ${__dir}/modelbuild.sh \
+    debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --jobname-prefix "twolevel_${_datetime}_subject_${i}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
+    ${__dir}/modelbuild.sh ${_arg_debug:+--debug} \
       --jobname-prefix "twolevel_${_datetime}_subject_${i}_" \
       ${_arg_leftovers[@]} \
       --output-dir ${_arg_output_dir}/firstlevel/subject_${i} \
@@ -194,7 +198,7 @@ while read -r subject_scans; do
   ((++i))
 done < ${_arg_inputs}
 
-debug "${__dir}/modelbuild.sh --skip-file-checks --job-predepend "twolevel_${_datetime}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
-${__dir}/modelbuild.sh --skip-file-checks --job-predepend "twolevel_${_datetime}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
+debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${_datetime}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
+${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${_datetime}_" ${_arg_leftovers[@]} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
 
 # ] <-- needed because of Argbash
