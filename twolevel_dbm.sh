@@ -8,7 +8,7 @@
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
 # ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per subject, comma separated scans per subject],[])
-# ARG_LEFTOVERS([Arguments to be passed to modelbuild.sh without validation])
+# ARG_LEFTOVERS([Arguments to be passed to dbm.sh without validation])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
 # needed because of Argbash --> m4_ignore([
@@ -49,7 +49,7 @@ print_help()
   printf '%s\n' "DBM post-processing for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per subject, comma separated scans per subject"
-  printf '\t%s\n' "... : Arguments to be passed to modelbuild.sh without validation"
+  printf '\t%s\n' "... : Arguments to be passed to dbm.sh without validation"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
   printf '\t%s\n' "--jacobian-smooth: Comma separated list of smoothing gaussian FWHM, append \"vox\" for voxels, \"mm\" for millimeters (default: '4vox')"
