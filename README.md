@@ -109,7 +109,7 @@ $ ./modelbuild.sh input.txt
 
 ## Two-level wrapper
 
-```bash
+```
 A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction
 Usage: ./twolevel_modelbuild.sh [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... 
         <inputs>: Input text files, one line per subject, comma separated scans per subject
@@ -120,6 +120,9 @@ Usage: ./twolevel_modelbuild.sh [-h|--help] [--output-dir <arg>] [--masks <arg>]
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
 ```
+
+`--output-dir` will contain a `firstlevel/` containing scan-wise `modelbuild.sh` outputs, and a `secondlevel/` directory,
+containing subject-wise modelbuild outputs.
 
 ## Deformation Based Morphometry (DBM)
 
@@ -138,8 +141,7 @@ $ ./dbm.sh input.txt
 
 Complete run options
 
-```bash
-$ ./dbm.sh --help
+```
 DBM post-processing for optimized_antsMultivariateTemplateConstruction
 Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text files, one line per input, one file per spectra
@@ -157,9 +159,13 @@ Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [
         --jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)
 ```
 
+### Outputs
+
+Single level DBM outputs are found in `${output_dir}/dbm/jacobian/{full,relative}/smooth` named according to the input scan with a suffix of the smoothing option (`_fwhm_4vox` for example)
+
 ### Two-level DBM wrapper
 
-```bash
+```
 A wrapper to enable two-level (aka longitudinal) DBM using optimized_antsMultivariateTemplateConstruction
 Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... 
         <inputs>: Input text files, one line per subject, comma separated scans per subject
@@ -171,6 +177,16 @@ Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <ar
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
 ```
+
+### Outputs
+
+Two-level DBM processing produces two types of outputs, `overall` DBM files,
+which encode the entire voxel-wise difference between the original input scan and
+the final second-level average, and `resampled-dbm` which encode the within-subject
+change, with voxel-wise correspondence at the population level. The `resampled-dbm`
+outputs are typically what is used for longitudinal analysis.
+
+`dbm` directories are created within each `${output_dir}/firstlevel/subject_${N}` directory, as well as in the `${output_dir}/secondlevel` directory for the within-level computation of needed intermediates. DBM outputs intended for analysis at the second level are produced at `${output_dir}/secondlevel/{overall-dbm,resampled-dbm}/jacobian/{full,relative}/smooth` with naming according to the original input scans.
 
 ### Classical DBM
 
