@@ -413,7 +413,7 @@ for file in "${_arg_inputs[@]}"; do
 done
 
 #Check for duplicate filenames
-IFS=$'\n' duplicates=$(sort <<<"${input_filenames_for_dup_check[*]}" | uniq -d)
+duplicates=$(IFS=$'\n' ; sort <<<"${input_filenames_for_dup_check[*]}" | uniq -d)
 if [[ ! -z ${duplicates} ]]; then
   failure "The following filenames are duplicated in the input file, file names must be unique \n ${duplicates}"
 fi
