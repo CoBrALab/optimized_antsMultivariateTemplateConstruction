@@ -57,7 +57,7 @@ function __b3bp_log() {
   local log_line=""
 
   while IFS=$'\n' read -r log_line; do
-    echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") ${color}$(printf "[%9s]" "${log_level}")${color_reset} ${log_line}" 1>&2
+    echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") ${color}$(printf "[%9s]" "${log_level}")${color_reset} $(echo ${log_line} | tr -s "[:blank:]")" 1>&2
   done <<<"${@:-}"
 }
 
@@ -98,7 +98,7 @@ function debug() {
 failure_handler() {
   local lineno=${1}
   local msg=${2}
-  echo "Failed at ${lineno}: ${msg}"
+  failure "Failed at ${lineno}: ${msg}"
 }
 trap 'failure_handler ${LINENO} "$BASH_COMMAND"' ERR
 
