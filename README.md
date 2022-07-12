@@ -124,7 +124,7 @@ Usage: ./twolevel_modelbuild.sh [-h|--help] [--output-dir <arg>] [--masks <arg>]
 `--output-dir` will contain a `firstlevel/` containing scan-wise `modelbuild.sh` outputs, and a `secondlevel/` directory,
 containing subject-wise modelbuild outputs.
 
-## Deformation Based Morphometry (DBM)
+## Deformation Based Morphometry (DBM) -- Model build must be completed first
 
 Once a unbiased average model has been constructed, its possible to post-process the consensus deformation fields
 to produce Jacobian determinants which encode the voxel-wise distance from each input scan to the consensus
@@ -159,7 +159,7 @@ Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [
         --jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)
 ```
 
-### Outputs
+#### Outputs
 
 Single level DBM outputs are found in `${output_dir}/dbm/jacobian/{full,relative}/smooth` named according to the input scan with a suffix of the smoothing option (`_fwhm_4vox` for example)
 
@@ -178,7 +178,13 @@ Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <ar
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
 ```
 
-### Outputs
+A minimal run command, assuming a complete run from `twolevel_modelbuild.sh`, run using `input.txt`
+
+```bash
+$ ./twolevel_dbm.sh input.txt
+```
+
+#### Outputs
 
 Two-level DBM processing produces two types of outputs, `overall` DBM files,
 which encode the entire voxel-wise difference between the original input scan and
