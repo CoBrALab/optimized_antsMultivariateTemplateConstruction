@@ -20,16 +20,16 @@ if __name__ == "__main__":
                         choices=['image', 'warp'],
                         help="""
                         Specify whether the type of image is a nifti structural image,
-                        or a set of affine or non-linear (warp) transforms.
+                        or a set of non-linear (warp) transforms.
                         """)
     parser.add_argument("--method", default='trimmed_mean',
                         choices=['mean', 'median', 'trimmed_mean', 'huber'],
                         help="""
-                        Specify of average method to create from the image list.
+                        Specify the type of average to create from the image list.
                         """)
     parser.add_argument("--trim_percent", type=float, default=0.15,
                         help="""
-                        Specify % to trim off if using trimmed_mean.
+                        Specify the fraction to trim off if using trimmed_mean.
                         """)
     parser.add_argument("--normalize", dest='normalize', action='store_true',
                         help="""
