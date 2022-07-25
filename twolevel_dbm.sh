@@ -158,7 +158,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 if [[ ${_arg_debug} == "off" ]]; then
-  unset ${_arg_debug}
+  unset _arg_debug
 fi
 
 # Setup a timestamp for prefixing all commands
