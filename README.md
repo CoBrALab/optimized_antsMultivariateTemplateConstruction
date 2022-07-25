@@ -107,6 +107,13 @@ per path to an input file
 $ ./modelbuild.sh input.txt
 ```
 
+### Outputs
+
+The final output round of a `modelbuild.sh` run will be in `${output_dir}/final` which is linked to
+the final stage output directory which was specified on the command line. See [Output directory structure](#output-directory-structure).
+
+The final modelbuild average is `template_sharpen_shapeupdate.nii.gz`
+
 ## Two-level wrapper
 
 ```
