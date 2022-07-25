@@ -23,7 +23,7 @@ if __name__ == "__main__":
                         or a set of non-linear (warp) transforms.
                         """)
     parser.add_argument("--method", default='trimmed_mean',
-                        choices=['mean', 'median', 'trimmed_mean', 'huber'],
+                        choices=['mean', 'median', 'trimmed_mean', 'efficient_trimean', 'huber'],
                         help="""
                         Specify the type of average to create from the image list.
                         """)
@@ -63,6 +63,9 @@ if __name__ == "__main__":
     elif opts.method == 'trimmed_mean':
         from scipy import stats
         average = stats.trim_mean(concat_array, opts.trim_percent, axis=0)
+    elif opts.method == 'efficient_trimean': 
+        # computes the average from the 20th,50th and 80th percentiles https://en.wikipedia.org/wiki/Trimean
+        average = np.quantile(concat_array, (0.2,0.5,0.8),axis=0).mean(axis=0)
     elif opts.method == 'huber':
         import statsmodels.api as sm
         average = sm.robust.scale.huber(concat_array)[0]
