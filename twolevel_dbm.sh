@@ -180,7 +180,7 @@ done <  ${_arg_output_dir}/secondlevel/input_files.txt
 
 # Process Second Level DBM
 info "Processing between-subject DBM outputs"
-debug "${__dir}/dbm.sh ${_arg_debug:+--debug}${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${_datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
+debug "${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${_datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
 if [[ ${_arg_dry_run} == "off" ]]; then
   ${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${_datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
 fi
