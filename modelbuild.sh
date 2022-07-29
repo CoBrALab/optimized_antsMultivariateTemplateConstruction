@@ -692,6 +692,12 @@ for reg_type in "${_arg_stages[@]}"; do
       gradient_step=${_arg_gradient_step[-1]}
     fi
 
+    if [[ ${target} == ${_arg_starting_target} || $(basename ${target}) == "initialtarget.nii.gz" ]]; then
+      use_histogram=""
+    else
+      use_histogram="--histogram-matching"
+    fi
+
     if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_shapeupdate.nii.gz ]]; then
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
       mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
@@ -716,7 +722,7 @@ for reg_type in "${_arg_stages[@]}"; do
           _mask+=" --fixed-mask ${target_mask}"
         fi
 
-        # If three was a previous round of modelbuilding, bootstrap registration with it's affine
+        # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled)
         if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ${_arg_reuse_affines} == "on" ]]; then
           bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
         else
@@ -727,8 +733,9 @@ for reg_type in "${_arg_stages[@]}"; do
             # Linear stages of registration
             walltime_reg=${_arg_walltime_linear}
             echo antsRegistration_affine_SyN.sh --clobber \
-              ${_arg_float} \
-              --skip-nonlinear --linear-type ${reg_type} ${_arg_fast} \
+              ${_arg_float} ${_arg_fast} \
+              ${use_histogram} \
+              --skip-nonlinear --linear-type ${reg_type} \
               ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
               --convergence ${_arg_convergence} \
@@ -741,6 +748,7 @@ for reg_type in "${_arg_stages[@]}"; do
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
+              ${use_histogram} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}  | extension_strip).nii.gz \
               ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
@@ -753,6 +761,7 @@ for reg_type in "${_arg_stages[@]}"; do
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
+              ${use_histogram} \
               -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
               ${_arg_mask_extract} ${_mask} \
               ${bootstrap} \
