@@ -3,7 +3,25 @@
 This pipeline is a re-implementation of the [ANTs](https://github.com/ANTsX/ANTs)
 template construction pipeline (in particular, `antsMultivariateTemplateConstruction2.sh`).
 The pipeline attempts to maintain the principles of template construction while
-differing in some of the implementation mechanisms.
+differing substantially in some of the implementation steps.
+
+## How does this all work?
+
+The ANTs unbiased model/template building method consists of the iterative application
+of two major stages, the registration stage, and the template updating stage.
+
+In the registration stage, all inputs are registered to a target, which is either
+the initial target (first round) or the evolving template from the previous round.
+After registration, each input is resampled into the target space.
+
+In the template updating stage, several sub-steps happen.
+
+1. The resampled inputs are voxel-wise averaged.
+2. The resulting average has a sharpening filter applied.
+3. The (non-linear) transformations from inputs to target are averaged, pseudo-inverted, and scaled (multiplied by the negative of the gradient step value)
+4. The resulting pseudo-inverted-scaled average transform is applied to the sharpened average.
+
+This new average is used as the target for the next round of registration and the process is repeated.
 
 ## Differences
 
@@ -112,7 +130,7 @@ $ ./modelbuild.sh input.txt
 The final output round of a `modelbuild.sh` run will be in `${output_dir}/final` which is linked to
 the final stage output directory which was specified on the command line. See [Output directory structure](#output-directory-structure).
 
-The final modelbuild average is `template_sharpen_shapeupdate.nii.gz`
+The final modelbuild average is `${output_dir}/final/average/template_sharpen_shapeupdate.nii.gz`
 
 ## Two-level wrapper
 
@@ -129,7 +147,7 @@ Usage: ./twolevel_modelbuild.sh [-h|--help] [--output-dir <arg>] [--masks <arg>]
 ```
 
 `--output-dir` will contain a `firstlevel/` containing scan-wise `modelbuild.sh` outputs, and a `secondlevel/` directory,
-containing subject-wise modelbuild outputs.
+containing subject-wise modelbuild outputs. See above for details.
 
 ## Deformation Based Morphometry (DBM) -- Model build must be completed first
 
@@ -170,6 +188,17 @@ Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [
 
 Single level DBM outputs are found in `${output_dir}/dbm/jacobian/{full,relative}/smooth` named according to the input scan with a suffix of the smoothing option (`_fwhm_4vox` for example)
 
+#### Classical DBM
+
+In classical DBM, rather than building an unbiased average, a direct registration is done to a target template
+and the Jacobian determinants computed. This is achievable using these tools by limiting the model construction
+to a single iteration and ignoring the average model in favour of the initial target.
+
+```bash
+$ ./modelbuild.sh --starting-target <MNI_model> --stages nlin[1] input.txt
+$ ./dbm.sh input.txt
+```
+
 ### Two-level DBM wrapper
 
 ```
@@ -193,24 +222,15 @@ $ ./twolevel_dbm.sh input.txt
 
 #### Outputs
 
-Two-level DBM processing produces two types of outputs, `overall` DBM files,
+Two-level DBM processing produces two types of outputs, `overall-dbm` files,
 which encode the entire voxel-wise difference between the original input scan and
 the final second-level average, and `resampled-dbm` which encode the within-subject
 change, with voxel-wise correspondence at the population level. The `resampled-dbm`
-outputs are typically what is used for longitudinal analysis.
+outputs are typically what is used for longitudinal analysis as they contain
+within-subject changes aligned at the population level.
 
 `dbm` directories are created within each `${output_dir}/firstlevel/subject_${N}` directory, as well as in the `${output_dir}/secondlevel` directory for the within-level computation of needed intermediates. DBM outputs intended for analysis at the second level are produced at `${output_dir}/secondlevel/{overall-dbm,resampled-dbm}/jacobian/{full,relative}/smooth` with naming according to the original input scans.
 
-### Classical DBM
-
-In classical DBM, rather than building an unbiased average, a direct registration is done to a target template
-and the Jacobian determinants computed. This is achievable using these tools by limiting the model construction
-to a single iteration and ignoring the average model in favour of the initial target.
-
-```bash
-$ ./modelbuild.sh --starting-target <MNI_model> --stages nlin[1] input.txt
-$ ./dbm.sh input.txt
-```
 
 ## Output directory structure
 
