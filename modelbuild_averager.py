@@ -13,6 +13,7 @@ if __name__ == "__main__":
                         """)
     parser.add_argument('--file_list', type=str,
                         nargs="*",  # 0 or more values expected => creates a list
+                        required=True,
                         help="""
                         Specify a list of input files, space-seperated (i.e. file1 file2 ...).
                         """)
@@ -47,7 +48,7 @@ if __name__ == "__main__":
     array_list = []
     for file in opts.file_list:
         if not os.path.isfile(file):
-            raise ValueError(f"The provided file {file} does not exist.")
+            raise ValueError("The provided file {file} does not exist.".format(file=file))
         array = sitk.GetArrayFromImage(sitk.ReadImage(file))
         shape = array.shape # we assume all inputs have the same shape
         array = array.flatten()
