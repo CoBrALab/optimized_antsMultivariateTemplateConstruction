@@ -45,6 +45,10 @@ if __name__ == "__main__":
         sys.exit()
 
     if opts.image_type == 'image':
+        # Here we cheat to avoid loading all the images for metadata
+        # make an tiny empty image, and fill in the metadata from the reader class
+        img = sitk.Image([1,1,1], sitk.sitkUInt8)
+
 
         # Boundary detection stolen from
         # https://github.com/dave3d/dicom2stl/blob/main/utils/regularize.py
@@ -55,12 +59,13 @@ if __name__ == "__main__":
         for file in opts.file_list:
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
-            # This is inefficent, but TransformContinuousIndexToPhysicalPoint is not available using reader
-            img = sitk.ReadImage(file)
-            # reader = sitk.ImageFileReader()
-            # reader.SetFileName(file)
-            # reader.ReadImageInformation()
-            dims = img.GetSize()
+            reader = sitk.ImageFileReader()
+            reader.SetFileName(file)
+            reader.ReadImageInformation()
+            img.SetSpacing(reader.GetSpacing())
+            img.SetOrigin(reader.GetOrigin())
+            img.SetDirection(reader.GetDirection())
+            dims = reader.GetSize()
             spcs = img.GetSpacing()
             # Corners in voxel space
             vcorners = [
@@ -98,6 +103,7 @@ if __name__ == "__main__":
         averageRef.SetOrigin(mins)
         averageRef.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
 
+        # Create empty array to stick data in
         # Need to reverse the dimension order b/c numpy and ITK are backwards
         concat_array = np.empty(newdims[::-1])
         shape = concat_array.shape
@@ -120,12 +126,11 @@ if __name__ == "__main__":
                 concat_array = np.vstack((concat_array, array.flatten()))
 
     else:
-        # Need to reverse the dimension order b/c numpy and ITK are backwards
+        # Assume all warp fields are in the same space
         concat_array = np.empty(sitk.GetArrayViewFromImage(sitk.ReadImage(opts.file_list[0])).shape)
         shape = concat_array.shape
         concat_array = concat_array.flatten()
         for file in opts.file_list:
-            print(file)
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
             img = sitk.ReadImage(file)
