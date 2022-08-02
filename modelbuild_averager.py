@@ -24,7 +24,7 @@ if __name__ == "__main__":
                         or a set of non-linear (warp) transforms.
                         """)
     parser.add_argument("--method", default='efficient_trimean', type=str,
-                        choices=['mean', 'median', 'trimmed_mean', 'efficient_trimean', 'huber', 'sum', 'std', 'var'],
+                        choices=['mean', 'median', 'trimmed_mean', 'efficient_trimean', 'huber', 'sum', 'std', 'var', 'mad'],
                         help="""
                         Specify the type of average to create from the image list.
                         """)
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         for file in opts.file_list:
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
-            # This is in efficent, but TransformContinuousIndexToPhysicalPoint is not available using reader
+            # This is inefficent, but TransformContinuousIndexToPhysicalPoint is not available using reader
             img = sitk.ReadImage(file)
             # reader = sitk.ImageFileReader()
             # reader.SetFileName(file)
@@ -73,6 +73,7 @@ if __name__ == "__main__":
                 [0, dims[1], dims[2]],
                 [dims[0], dims[1], dims[2]],
             ]
+            # Corners in world space
             wcorners = []
             for c in vcorners:
                 wcorners.append(img.TransformContinuousIndexToPhysicalPoint(c))
@@ -114,7 +115,6 @@ if __name__ == "__main__":
             )
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                #array /= array.mean()
                 concat_array = np.vstack((concat_array, array.flatten()/array.mean()))
             else:
                 concat_array = np.vstack((concat_array, array.flatten()))
@@ -148,6 +148,9 @@ if __name__ == "__main__":
     elif opts.method == 'huber':
         import statsmodels.api as sm
         average = sm.robust.scale.huber(concat_array)[0]
+    elif opts.method == 'mad':
+        import statsmodels.api as sm
+        average = sm.robust.scale.mad(concat_array)
     elif opts.method == 'sum':
         average = np.sum(concat_array, axis=0)
     elif opts.method == 'std':
