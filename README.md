@@ -62,6 +62,9 @@ from [minc-toolkit-extras](https://github.com/CoBrALab/minc-toolkit-extras/) for
 optimized registration generation, and [qbatch](https://github.com/pipitone/qbatch)
 for running commands locally or with cluster integration.
 
+(Optional) advanced averaging options are provided by a python script which requires
+[SimpleITK](https://simpleitk.org/), [NumPy](https://numpy.org/), and [SciPy](https://scipy.org/)
+
 ## Missing features
 
 The following are features missing compared to `antsMultivariateTemplateConstruction2.sh`
@@ -86,7 +89,7 @@ been updated
 
 ```
 A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
-Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text file, one line per input
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
@@ -99,7 +102,9 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --convergence: Convergence limit during registration calls (default: '1e-7')
         --float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)
         --fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)
-        --average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median' and 'normmean' (default: 'normmean')
+        --average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median', 'trimmed_mean', 'efficient_trimean' and 'huber' (default: 'mean')
+        --average-prog: Software to use for averaging, python needed for trimmed_mean, efficient_trimean, and huber. Can be one of: 'ANTs' and 'python' (default: 'ANTs')
+        --average-norm, --no-average-norm: Normalize images by their mean before averaging (on by default)
         --rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)
         --sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')
         --masks: File containing mask filenames, one file per line (no default)
@@ -115,7 +120,6 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
-
 ```
 
 Minimal run command, assuming an input text file `inputs.txt` containing one line
