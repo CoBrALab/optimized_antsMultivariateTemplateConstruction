@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     if (image_type == 'image' or image_type == 'warp') and len(opts.file_list) == 1:
         print("ONLY ONE INPUT PROVIDED TO --file_list. THE OUTPUT IS THE INPUT.")
-        sitk.WriteImage(sitk.ReadImage(opts.file_list[0]), opts.output)
+        sitk.WriteImage(inputRefImage, opts.output)
         import sys
         sys.exit()
 
@@ -52,6 +52,10 @@ if __name__ == "__main__":
         # make an tiny empty image, and fill in the metadata from the reader class
         img = sitk.Image([1,1,1], sitk.sitkUInt8)
 
+        # Set the initial properties of the ref image
+        img.SetSpacing(inputRefImage.GetSpacing())
+        img.SetOrigin(inputRefImage.GetOrigin())
+        img.SetDirection(inputRefImage.GetDirection())
 
         # Boundary detection stolen from
         # https://github.com/dave3d/dicom2stl/blob/main/utils/regularize.py
@@ -59,68 +63,79 @@ if __name__ == "__main__":
         maxes = [-1e32, -1e32, -1e32]
         spacings = [1e32, 1e32, 1e32]
         maxdim = -1
+        outputdirection = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        images_different = False
         for file in opts.file_list:
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
             reader = sitk.ImageFileReader()
             reader.SetFileName(file)
             reader.ReadImageInformation()
-            img.SetSpacing(reader.GetSpacing())
-            img.SetOrigin(reader.GetOrigin())
-            img.SetDirection(reader.GetDirection())
-            dims = reader.GetSize()
-            spcs = img.GetSpacing()
-            # Corners in voxel space
-            vcorners = [
-                [0, 0, 0],
-                [dims[0], 0, 0],
-                [0, dims[1], 0],
-                [dims[0], dims[1], 0],
-                [0, 0, dims[2]],
-                [dims[0], 0, dims[2]],
-                [0, dims[1], dims[2]],
-                [dims[0], dims[1], dims[2]],
-            ]
-            # Corners in world space
-            wcorners = []
-            for c in vcorners:
-                wcorners.append(img.TransformContinuousIndexToPhysicalPoint(c))
-            # compute the bounding box of the volume
-            for c in wcorners:
-                for i in range(0, 3):
-                    if c[i] < mins[i]:
-                        mins[i] = c[i]
-                    if c[i] > maxes[i]:
-                        maxes[i] = c[i]
-            for i,s in enumerate(spcs):
-                if s < spacings[i]:
-                    spacings[i] = s
 
-        # compute the dimensions of the new volume
-        newdims = []
-        for i in range(0, 3):
-            newdims.append(int((maxes[i] - mins[i]) / spacings[i] + 0.5))
+            if not (np.allclose(img.GetSpacing(), reader.GetSpacing(), atol=1e-6) and
+                    np.allclose(img.GetOrigin(), reader.GetOrigin(), atol=1e-6) and
+                    np.allclose(img.GetDirection(), reader.GetDirection())):
+                images_different = True
+                img.SetSpacing(reader.GetSpacing())
+                img.SetOrigin(reader.GetOrigin())
+                img.SetDirection(reader.GetDirection())
+                dims = reader.GetSize()
+                spcs = img.GetSpacing()
+                # Corners in voxel space
+                vcorners = [
+                    [0, 0, 0],
+                    [dims[0], 0, 0],
+                    [0, dims[1], 0],
+                    [dims[0], dims[1], 0],
+                    [0, 0, dims[2]],
+                    [dims[0], 0, dims[2]],
+                    [0, dims[1], dims[2]],
+                    [dims[0], dims[1], dims[2]],
+                ]
+                # Corners in world space
+                wcorners = []
+                for c in vcorners:
+                    wcorners.append(img.TransformContinuousIndexToPhysicalPoint(c))
+                # compute the bounding box of the volume
+                for c in wcorners:
+                    for i in range(0, 3):
+                        if c[i] < mins[i]:
+                            mins[i] = c[i]
+                        if c[i] > maxes[i]:
+                            maxes[i] = c[i]
+                for i,s in enumerate(spcs):
+                    if s < spacings[i]:
+                        spacings[i] = s
 
-        averageRef = sitk.Image(newdims, sitk.sitkFloat32)
-        averageRef.SetSpacing(spacings)
-        averageRef.SetOrigin(mins)
-        averageRef.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
+        if images_different:
+            # compute the dimensions of the new volume
+            newdims = []
+            for i in range(0, 3):
+                newdims.append(int((maxes[i] - mins[i]) / spacings[i] + 0.5))
+
+            averageRef = sitk.Image(newdims, sitk.sitkFloat32)
+            averageRef.SetSpacing(spacings)
+            averageRef.SetOrigin(mins)
+            averageRef.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
+        else:
+            averageRef = inputRefImage
 
         # Create empty array to stick data in
         # Need to reverse the dimension order b/c numpy and ITK are backwards
-        concat_array = np.empty(shape=[0, np.prod(newdims[::-1])])
-        shape = newdims[::-1]
+        concat_array = np.empty(shape=[0, np.prod(averageRef.GetSize())])
+        shape = averageRef.GetSize()[::-1]
 
         for file in opts.file_list:
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
             img = sitk.ReadImage(file)
-            img = sitk.Resample(
-                img,
-                averageRef,
-                sitk.Transform(),
-                sitk.sitkLinear
-            )
+            if images_different:
+                img = sitk.Resample(
+                    img,
+                    averageRef,
+                    sitk.Transform(),
+                    sitk.sitkLinear
+                )
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
                 concat_array = np.vstack((concat_array, array.flatten()/array.mean()))
