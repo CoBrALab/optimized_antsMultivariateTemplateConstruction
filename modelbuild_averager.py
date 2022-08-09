@@ -18,7 +18,7 @@ if __name__ == "__main__":
                         Specify a list of input files, space-separated (i.e. file1 file2 ...).
                         """)
     parser.add_argument("--method", default='mean', type=str,
-                        choices=['mean', 'median', 'trimmed_mean', 'efficient_trimean', 'huber', 'sum', 'std', 'var', 'mad'],
+                        choices=['mean', 'median', 'trimmed_mean', 'efficient_trimean', 'huber', 'sum', 'std', 'var', 'mad', 'or', 'and', 'nor'],
                         help="""
                         Specify the type of average to create from the image list.
                         """)
@@ -192,6 +192,12 @@ if __name__ == "__main__":
         average = np.std(concat_array, axis=0)
     elif opts.method == 'var':
         average = np.var(concat_array, axis=0)
+    elif opts.method == 'and':
+        average = np.all(concat_array, axis=0).astype(float)
+    elif opts.method == 'or':
+        average = np.any(concat_array, axis=0).astype(float)
+    elif opts.method == 'nor':
+        average = np.invert(np.any(concat_array, axis=0)).astype(float)
 
     average = average.reshape(shape)
 
