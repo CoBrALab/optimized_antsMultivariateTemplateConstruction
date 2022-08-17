@@ -3,15 +3,11 @@
 # Calculator for maths
 calc () { awk "BEGIN{ print $* }" ;}
 
-### BASH HELPER FUNCTIONS ###
-# Stolen from https://github.com/kvz/bash3boilerplate
+# Setup a timestamp for prefixing all commands
+__datetime=$(date -u +%F_%H-%M-%S-UTC)
 
-# Set magic variables for current file, directory, os, etc.
-__dir="$(cd "$(dirname "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")" && pwd)"
-__file="${__dir}/$(basename "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")"
-__base="$(basename "${__file}" .sh)"
-# shellcheck disable=SC2034,SC2015
-__invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
+### BASH HELPER FUNCTIONS ###
+# Stolen from https://github.com/kvz/bash3boilerplate"
 
 if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
   LOG_LEVEL=7
@@ -96,11 +92,24 @@ function debug() {
 
 # Add handler for failure to show where things went wrong
 failure_handler() {
-  local lineno=${1}
-  local msg=${2}
-  failure "Failed at ${lineno}: ${msg}"
+  local lineno=$2
+  local fn=$3
+  local exitstatus=$4
+  local msg=$5
+  local lineno_fns=${1% 0}
+  if [[ "$lineno_fns" != "0" ]] ; then
+    lineno="${lineno} ${lineno_fns}"
+  fi
+  failure "${BASH_SOURCE[1]}:${fn}[${lineno}] Failed with status ${exitstatus}: $msg"
 }
-trap 'failure_handler ${LINENO} "$BASH_COMMAND"' ERR
+trap 'failure_handler "${BASH_LINENO[*]}" "$LINENO" "${FUNCNAME[*]:-script}" "$?" "$BASH_COMMAND"' ERR
+
+function run_smart {
+  # Function runs the command it wraps if the file does not exist
+  if [[ ! -s "$1" ]]; then
+    "$2"
+  fi
+}
 
 function run_smart {
   # Function runs the command it wraps if the file does not exist
