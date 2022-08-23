@@ -104,6 +104,17 @@ failure_handler() {
 }
 trap 'failure_handler "${BASH_LINENO[*]}" "$LINENO" "${FUNCNAME[*]:-script}" "$?" "$BASH_COMMAND"' ERR
 
+#This function is used to cleanly exit any script. It does this displaying a
+# given error message, and exiting with an error code.
+function error_exit {
+    failure "$@"
+}
+#Trap the killer signals so that we can exit with a good message.
+trap "error_exit 'Exiting: Received signal SIGHUP'" SIGHUP
+trap "error_exit 'Exiting: Received signal SIGINT'" SIGINT
+trap "error_exit 'Exiting: Received signal SIGTERM'" SIGTERM
+
+
 function run_smart {
   # Function runs the command it wraps if the file does not exist
   if [[ ! -s "$1" ]]; then
