@@ -114,14 +114,6 @@ trap "error_exit 'Exiting: Received signal SIGHUP'" SIGHUP
 trap "error_exit 'Exiting: Received signal SIGINT'" SIGINT
 trap "error_exit 'Exiting: Received signal SIGTERM'" SIGTERM
 
-
-function run_smart {
-  # Function runs the command it wraps if the file does not exist
-  if [[ ! -s "$1" ]]; then
-    "$2"
-  fi
-}
-
 function run_smart {
   # Function runs the command it wraps if the file does not exist
   if [[ ! -s "$1" ]]; then
