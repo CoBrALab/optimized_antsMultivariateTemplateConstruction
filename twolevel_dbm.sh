@@ -184,9 +184,9 @@ done <  ${_arg_output_dir}/secondlevel/input_files.txt
 
 # Process Second Level DBM
 info "Processing between-subject DBM outputs"
-debug "${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${__datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
+debug "${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --jobname-prefix "dbm_twolevel_${__datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
 if [[ ${_arg_dry_run} == "off" ]]; then
-  ${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${__datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
+  ${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --jobname-prefix "dbm_twolevel_${__datetime}_" --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
 fi
 mkdir -p ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/{full,relative}/smooth
 mkdir -p ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/{full,relative}/smooth
@@ -201,9 +201,9 @@ while read -r subject_scans; do
 
   IFS=',' read -r -a scans <<<${subject_scans}
   if [[ $(wc -l < ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt) -gt 1 ]]; then
-    debug "${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${__datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
+    debug "${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --jobname-prefix "dbm_twolevel_${__datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
     if [[ ${_arg_dry_run} == "off" ]]; then
-      ${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]} --jobname-prefix "dbm_twolevel_${__datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
+      ${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --jobname-prefix "dbm_twolevel_${__datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
     fi
 
     for scan in "${scans[@]}"; do
