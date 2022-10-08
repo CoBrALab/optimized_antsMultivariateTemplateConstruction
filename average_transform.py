@@ -44,6 +44,13 @@ if __name__ == "__main__":
             Specify a list of input files, space-separated (i.e. file1 file2 ...).
             """,
     )
+    parser.add_argument(
+        "--no-translation",
+        action="store_true",
+        help="""
+            Zero-out translation of average transformation.
+            """,
+    )
     opts = parser.parse_args()
 
     average_matrix = np.zeros((4, 4), dtype=complex)
@@ -58,7 +65,16 @@ if __name__ == "__main__":
     average_matrix /= len(opts.file_list)
     average_matrix = scipy.linalg.expm(average_matrix).real
 
-    output_average_transform = sitk.AffineTransform(average_matrix[0:3, 0:3].flatten(), average_matrix[0:3, 3].flatten(), (0,0,0))
+    if opts.no_translation:
+        output_average_transform = sitk.AffineTransform(
+            average_matrix[0:3, 0:3].flatten(), (0, 0, 0), (0, 0, 0)
+        )
+    else:
+        output_average_transform = sitk.AffineTransform(
+            average_matrix[0:3, 0:3].flatten(),
+            average_matrix[0:3, 3].flatten(),
+            (0, 0, 0),
+        )
 
     print(output_average_transform)
 
