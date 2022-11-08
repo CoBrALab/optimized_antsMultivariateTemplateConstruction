@@ -95,12 +95,13 @@ failure_handler() {
   local lineno=$2
   local fn=$3
   local exitstatus=$4
-  local msg=$5
+  local msg_orig=$5
+  local msg_expanded=$(eval echo \"$5\")
   local lineno_fns=${1% 0}
   if [[ "$lineno_fns" != "0" ]] ; then
     lineno="${lineno} ${lineno_fns}"
   fi
-  failure "${BASH_SOURCE[1]}:${fn}[${lineno}] Failed with status ${exitstatus}: $msg"
+  failure "${BASH_SOURCE[1]}:${fn}[${lineno}] Failed with status ${exitstatus}: \n\t${msg_orig}\n\t${msg_expanded}"
 }
 trap 'failure_handler "${BASH_LINENO[*]}" "$LINENO" "${FUNCNAME[*]:-script}" "$?" "$BASH_COMMAND"' ERR
 
