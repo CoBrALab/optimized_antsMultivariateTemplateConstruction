@@ -549,6 +549,17 @@ if [[ ${_arg_average_prog} == "ANTs" ]]; then
   esac
 fi
 
+# Check that python code will run
+if [[ ${_arg_average_prog} == "python" ]]; then
+  ${__dir}/modelbuild_averager.py -h &>/dev/null || failure "modelbuild_averager.py failed to run, check python version and dependencies"
+  ${__dir}/average_transform.py -h &>/dev/null || failure "average_transform.py failed to run, check python version and dependencies"
+fi
+
+# Check that interpolator works if requested
+if [[ ${_arg_scale_affines} == "on" ]]; then
+  ${__dir}/interp_transform.py -h &>/dev/null || failure "interp_transform.py failed to run, check python version and dependencies"
+fi
+
 if [[ ${_arg_average_norm} == "off" ]]; then
   unset _arg_average_norm
 else
