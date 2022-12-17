@@ -977,8 +977,17 @@ for reg_type in "${_arg_stages[@]}"; do
 
         # If python code is available, scale affine
         if [[ ${_arg_scale_affines} == "on" ]]; then
-          echo ${__dir}/interp_transform.py ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat ${gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+          # Invert the transform so we scale from the correct direction
+          echo antsApplyTransforms -d 3 -t ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat -o Linear[ ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat,1 ] \
           >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+
+          # Scale the transform
+          echo ${__dir}/interp_transform.py ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat ${gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat \
+          >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+
+          shapeupdate_affine="${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat"
+        else
+          shapeupdate_affine="[ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ]"
         fi
 
 
@@ -998,7 +1007,7 @@ for reg_type in "${_arg_stages[@]}"; do
           echo antsApplyTransforms -d 3 -e vector ${_arg_float} \
             -i ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
-            -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+            -t ${shapeupdate_affine} \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
@@ -1007,7 +1016,7 @@ for reg_type in "${_arg_stages[@]}"; do
             -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
-            -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+            -t ${shapeupdate_affine} \
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
@@ -1021,7 +1030,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
               -n GenericLabel \
-              -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+              -t ${shapeupdate_affine} \
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
@@ -1036,7 +1045,7 @@ for reg_type in "${_arg_stages[@]}"; do
             -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
-            -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+            -t ${shapeupdate_affine} \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
@@ -1046,7 +1055,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
               -n GenericLabel \
-              -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+              -t ${shapeupdate_affine} \
               -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
               >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           fi
