@@ -41,8 +41,6 @@ if __name__ == "__main__":
 
     opts = parser.parse_args()
 
-    print(opts)
-
     # Input transform
     input_itk_transform = sitk.ReadTransform(opts.input_transform)
     output_itk_transform = sitk.AffineTransform(3)
