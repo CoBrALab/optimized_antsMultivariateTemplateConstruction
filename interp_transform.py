@@ -95,6 +95,5 @@ if __name__ == "__main__":
 
     output_itk_transform = homogenous_matrix_to_itk(vtk_to_homogenous_matrix(output_vtk_transform))
     output_itk_transform.SetFixedParameters(input_itk_transform.GetFixedParameters())
-    print(output_itk_transform)
 
     sitk.WriteTransform(output_itk_transform, opts.output_transform)
