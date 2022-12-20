@@ -126,5 +126,6 @@ if __name__ == "__main__":
         average_matrix[0:3, 3] = (0,0,0)
 
     output_average_transform = homogenous_matrix_to_itk(average_matrix)
+    output_average_transform.SetFixedParameters(sitk.ReadTransform(opts.file_list[0]).GetFixedParameters())
 
     sitk.WriteTransform(output_average_transform, opts.output)
