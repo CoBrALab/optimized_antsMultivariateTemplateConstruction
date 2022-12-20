@@ -789,8 +789,8 @@ for reg_type in "${_arg_stages[@]}"; do
           _mask+=" --fixed-mask ${target_mask}"
         fi
 
-        # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled)
-        if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ${_arg_reuse_affines} == "on" ]]; then
+        # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled), also do so for nlin-only stages
+        if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ( ${_arg_reuse_affines} == "on" || ${reg_type} == "nlin-only" ) ]]; then
           bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
         else
           bootstrap=""
@@ -824,7 +824,7 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
               >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
           else
-            # Non-linear only
+            # nlin-only registration, affines always bootstrapped from previous iteration (if there is a previous)
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
@@ -951,45 +951,50 @@ for reg_type in "${_arg_stages[@]}"; do
           ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
           >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
-        # Average all the affine transforms
-        if [[ ${_arg_average_prog} == "ANTs" ]]; then
-          if [[ ${_arg_rigid_update} == "on" ]]; then
-            echo AverageAffineTransform 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-              $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
-              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+        if [[ ${reg_type} != "nlin-only" ]]; then
+          # Average all the affine transforms
+          if [[ ${_arg_average_prog} == "ANTs" ]]; then
+            if [[ ${_arg_rigid_update} == "on" ]]; then
+              echo AverageAffineTransform 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            else
+              echo AverageAffineTransformNoRigid 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            fi
           else
-            echo AverageAffineTransformNoRigid 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-              $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
-              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            if [[ ${_arg_rigid_update} == "on" ]]; then
+              echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            else
+              echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                --no-rigid \
+                --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            fi
+          fi
+
+          # If python code is available, scale affine
+          if [[ ${_arg_scale_affines} == "on" ]]; then
+            # Invert the transform so we scale from the correct direction
+            echo antsApplyTransforms -d 3 -t ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat -o Linear[ ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat,1 ] \
+            >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+
+            # Scale the transform
+            echo ${__dir}/interp_transform.py ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat ${gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat \
+            >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+
+            shapeupdate_affine="${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat"
+          else
+            shapeupdate_affine="[ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ]"
           fi
         else
-          if [[ ${_arg_rigid_update} == "on" ]]; then
-            echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-              --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
-              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
-          else
-            echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-              --no-rigid \
-              --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
-              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
-          fi
-        fi
-
-        # If python code is available, scale affine
-        if [[ ${_arg_scale_affines} == "on" ]]; then
-          # Invert the transform so we scale from the correct direction
-          echo antsApplyTransforms -d 3 -t ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat -o Linear[ ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat,1 ] \
-          >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
-
-          # Scale the transform
-          echo ${__dir}/interp_transform.py ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat ${gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat \
-          >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
-
-          shapeupdate_affine="${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat"
-        else
+          # Generate identity transforms so affine shape update doesn't happen for nlin-only stage
+          ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat MakeAffineTransform 1
           shapeupdate_affine="[ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ]"
         fi
-
 
         # Now we update the template shape using the same steps as the original code
         if [[ ${reg_type} == "nlin" || ${reg_type} == "nlin-only" ]]; then
