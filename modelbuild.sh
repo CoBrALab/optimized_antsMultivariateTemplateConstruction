@@ -992,7 +992,8 @@ for reg_type in "${_arg_stages[@]}"; do
           fi
         else
           # Generate identity transforms so affine shape update doesn't happen for nlin-only stage
-          ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat MakeAffineTransform 1
+          echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat MakeAffineTransform 1 \
+            >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           shapeupdate_affine="[ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ]"
         fi
 
