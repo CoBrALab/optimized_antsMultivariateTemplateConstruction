@@ -7,6 +7,8 @@ set -euo pipefail
 
 calc() { awk "BEGIN{ print $* }"; }
 
+shopt -s nullglob
+
 
 for dir in ${1}/similarity/*/; do
     for file in ${dir}/transforms/*mat; do
