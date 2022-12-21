@@ -18,8 +18,10 @@ In the template updating stage, several sub-steps happen.
 
 1. The resampled inputs are voxel-wise averaged.
 2. The resulting average has a sharpening filter applied.
-3. The (non-linear) transformations from inputs to target are averaged, pseudo-inverted, and scaled (multiplied by the negative of the gradient step value)
-4. The resulting pseudo-inverted-scaled average transform is applied to the sharpened average.
+3. The affine transforms from inputs to targets are averaged.
+    - (If enabled) the average affine transform is scaled.
+4. The (non-linear) transformations from inputs to target are averaged, pseudo-inverted, and scaled (multiplied by the negative of the gradient step value)
+5. The resulting inverted average affine transform and pseudo-inverted-scaled average transform is applied to the sharpened average.
 
 This new average is used as the target for the next round of registration and the process is repeated.
 
@@ -39,19 +41,21 @@ parallelism
 
 - Registration with [`antsRegistration_affine_SyN.sh`](https://github.com/CoBrALab/minc-toolkit-extras/blob/master/antsRegistration_affine_SyN.sh)
 and driven by [`ants_generate_iterations.py`](https://github.com/CoBrALab/minc-toolkit-extras/blob/master/ants_generate_iterations.py)
-  - optimized registration scale pyramids based on image and voxel size
-  - constrained linear transform path via rigid->similarity->affine path
-  - stage repeats without/with masking
-- Integration of masking during registration (if desired)
+  - Optimized registration scale pyramids based on image and voxel size
+  - Constrained linear transform path via rigid->similarity->affine path
+  - Stage repeats without/with masking
+- (if enabled) Integration of masking during registration
 - Interpolation using `BSpline[5]` transforms where applicable
 - Staged template construction using progressively higher-order transform types
 (rigid, similarity, affine, nlin)
-- (optional) affine transforms at later stages are bootstrapped from prior stages to reduce
+- (optional) Affine transforms at later stages are bootstrapped from prior stages to reduce
 computational load
-- some defaults have been changed compared to `antsMultivariateTemplateConstruction2.sh`
-  - affine transforms are averaged without rigid component
-  - average sharpening defaults to UnsharpMask
-  - computation defaults to double
+- (if enabled) Affine transforms averaged using lie algebra instead of averaging matrix components
+- (if enabled) Average affine transform scaled using gradient step
+- Some defaults have been changed compared to `antsMultivariateTemplateConstruction2.sh`
+  - Affine transforms are averaged without rigid component
+  - Average sharpening defaults to UnsharpMask
+  - Computation defaults to double
 - convergence for registration loosened to `1e-7`
 
 ## Requirements
@@ -62,14 +66,16 @@ from [minc-toolkit-extras](https://github.com/CoBrALab/minc-toolkit-extras/) for
 optimized registration generation, and [qbatch](https://github.com/pipitone/qbatch)
 for running commands locally or with cluster integration.
 
-(Optional) advanced averaging options are provided by a python script which requires
-[SimpleITK](https://simpleitk.org/), [NumPy](https://numpy.org/), and [SciPy](https://scipy.org/)
+(Optional) advanced averaging options are provided by a python scripts which require
+[SimpleITK](https://simpleitk.org/), [NumPy](https://numpy.org/), [SciPy](https://scipy.org/)
+and [VTK](https://pypi.org/project/vtk/)
 
 ## Missing features
 
 The following are features missing compared to `antsMultivariateTemplateConstruction2.sh`
 
 ### Planned
+
 - multispectral registration
   - modality weights
 - change non-linear transform type
@@ -89,7 +95,7 @@ been updated
 
 ```
 A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
-Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text file, one line per input
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
@@ -103,8 +109,10 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)
         --fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)
         --average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median', 'trimmed_mean', 'efficient_trimean' and 'huber' (default: 'mean')
-        --average-prog: Software to use for averaging, python needed for trimmed_mean, efficient_trimean, and huber. Can be one of: 'ANTs' and 'python' (default: 'ANTs')
+        --average-prog: Software to use for averaging images and transforms
+                        python with SimpleITK needed for trimmed_mean, efficient_trimean, and huber. Can be one of: 'ANTs' and 'python' (default: 'ANTs')
         --average-norm, --no-average-norm: Normalize images by their mean before averaging (on by default)
+        --scale-affines, --no-scale-affines: Apply gradient step scaling factor to average affine during shape update step, requires python with VTK and SimpleITK (off by default)
         --rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)
         --sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')
         --masks: File containing mask filenames, one file per line (no default)
@@ -120,6 +128,7 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
+
 ```
 
 Minimal run command, assuming an input text file `inputs.txt` containing one line
@@ -140,7 +149,7 @@ The final modelbuild average is `${output_dir}/final/average/template_sharpen_sh
 
 ```
 A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction
-Usage: ./twolevel_modelbuild.sh [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... 
+Usage: ./twolevel_modelbuild.sh [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ...
         <inputs>: Input text files, one line per subject, comma separated scans per subject
         ... : Arguments to be passed to modelbuild.sh without validation
         -h, --help: Prints help
@@ -160,7 +169,7 @@ to produce Jacobian determinants which encode the voxel-wise distance from each 
 average.
 
 Post processing will generate `absolute` (including affine components) and `relative` (excluding affine components, and residual affines)
-log Jacobian determinants (`voxel > 0`, voxel expands towards subject (i.e. subject voxel is larger), `voxel < 0`, voxel contracts towards subject (i.e. subject voxel is smaller)). 
+log Jacobian determinants (`voxel > 0`, voxel expands towards subject (i.e. subject voxel is larger), `voxel < 0`, voxel contracts towards subject (i.e. subject voxel is smaller)).
 
 A minimal run command, assuming a complete run from `modelbuild.sh`, run using `input.txt`
 
@@ -207,7 +216,7 @@ $ ./dbm.sh input.txt
 
 ```
 A wrapper to enable two-level (aka longitudinal) DBM using optimized_antsMultivariateTemplateConstruction
-Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... 
+Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ...
         <inputs>: Input text files, one line per subject, comma separated scans per subject
         ... : Arguments to be passed to modelbuild.sh without validation
         -h, --help: Prints help
