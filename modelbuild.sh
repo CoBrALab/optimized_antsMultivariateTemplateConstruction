@@ -11,8 +11,9 @@
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements)],[])
 # ARG_OPTIONAL_BOOLEAN([fast],[],[Run SyN registration with Mattes instead of CC],[])
 # ARG_OPTIONAL_SINGLE([average-type],[],[Type of averaging to apply during modelbuild],[mean])
-# ARG_OPTIONAL_SINGLE([average-prog],[],[Software to use for averaging, python needed for trimmed_mean, efficient_trimean, and huber],[ANTs])
+# ARG_OPTIONAL_SINGLE([average-prog],[],[Software to use for averaging images and transforms\n        python with SimpleITK needed for trimmed_mean, efficient_trimean, and huber],[ANTs])
 # ARG_OPTIONAL_BOOLEAN([average-norm],[],[Normalize images by their mean before averaging],[on])
+# ARG_OPTIONAL_BOOLEAN([scale-affines],[],[Apply gradient step scaling factor to average affine during shape update step, requires python with VTK and SimpleITK],[])
 # ARG_OPTIONAL_BOOLEAN([rigid-update],[],[Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation)],[])
 # ARG_TYPE_GROUP_SET([averagetype],[AVERAGE],[average-type],[mean,median,trimmed_mean,efficient_trimean,huber])
 # ARG_TYPE_GROUP_SET([averageprogtype],[PROG],[average-prog],[ANTs,python])
@@ -107,6 +108,7 @@ _arg_fast="off"
 _arg_average_type="mean"
 _arg_average_prog="ANTs"
 _arg_average_norm="on"
+_arg_scale_affines="off"
 _arg_rigid_update="off"
 _arg_sharpen_type="unsharp"
 _arg_masks=
@@ -127,7 +129,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text file, one line per input"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -141,8 +143,10 @@ print_help()
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
   printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
   printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median', 'trimmed_mean', 'efficient_trimean' and 'huber' (default: 'mean')"
-  printf '\t%s\n' "--average-prog: Software to use for averaging, python needed for trimmed_mean, efficient_trimean, and huber. Can be one of: 'ANTs' and 'python' (default: 'ANTs')"
+  printf '\t%s\n' "--average-prog: Software to use for averaging images and transforms
+		        python with SimpleITK needed for trimmed_mean, efficient_trimean, and huber. Can be one of: 'ANTs' and 'python' (default: 'ANTs')"
   printf '\t%s\n' "--average-norm, --no-average-norm: Normalize images by their mean before averaging (on by default)"
+  printf '\t%s\n' "--scale-affines, --no-scale-affines: Apply gradient step scaling factor to average affine during shape update step, requires python with VTK and SimpleITK (off by default)"
   printf '\t%s\n' "--rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)"
   printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
@@ -263,6 +267,10 @@ parse_commandline()
       --no-average-norm|--average-norm)
         _arg_average_norm="on"
         test "${1:0:5}" = "--no-" && _arg_average_norm="off"
+        ;;
+      --no-scale-affines|--scale-affines)
+        _arg_scale_affines="on"
+        test "${1:0:5}" = "--no-" && _arg_scale_affines="off"
         ;;
       --no-rigid-update|--rigid-update)
         _arg_rigid_update="on"
@@ -541,6 +549,17 @@ if [[ ${_arg_average_prog} == "ANTs" ]]; then
   esac
 fi
 
+# Check that python code will run
+if [[ ${_arg_average_prog} == "python" ]]; then
+  ${__dir}/modelbuild_averager.py -h &>/dev/null || failure "modelbuild_averager.py failed to run, check python version and dependencies"
+  ${__dir}/average_transform.py -h &>/dev/null || failure "average_transform.py failed to run, check python version and dependencies"
+fi
+
+# Check that interpolator works if requested
+if [[ ${_arg_scale_affines} == "on" ]]; then
+  ${__dir}/interp_transform.py -h &>/dev/null || failure "interp_transform.py failed to run, check python version and dependencies"
+fi
+
 if [[ ${_arg_average_norm} == "off" ]]; then
   unset _arg_average_norm
 else
@@ -770,8 +789,8 @@ for reg_type in "${_arg_stages[@]}"; do
           _mask+=" --fixed-mask ${target_mask}"
         fi
 
-        # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled)
-        if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ${_arg_reuse_affines} == "on" ]]; then
+        # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled), also do so for nlin-only stages
+        if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ( ${_arg_reuse_affines} == "on" || ${reg_type} == "nlin-only" ) ]]; then
           bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
         else
           bootstrap=""
@@ -805,7 +824,7 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
               >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
           else
-            # Non-linear only
+            # nlin-only registration, affines always bootstrapped from previous iteration (if there is a previous)
             walltime_reg=${_arg_walltime_nonlinear}
             echo antsRegistration_affine_SyN.sh --clobber \
               ${_arg_float} ${_arg_fast} \
@@ -932,10 +951,51 @@ for reg_type in "${_arg_stages[@]}"; do
           ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
           >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
-        # Average all the affine transforms
-        echo ${AVERAGE_AFFINE_PROGRAM} 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
-          >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+        if [[ ${reg_type} != "nlin-only" ]]; then
+          # Average all the affine transforms
+          if [[ ${_arg_average_prog} == "ANTs" ]]; then
+            if [[ ${_arg_rigid_update} == "on" ]]; then
+              echo AverageAffineTransform 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            else
+              echo AverageAffineTransformNoRigid 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            fi
+          else
+            if [[ ${_arg_rigid_update} == "on" ]]; then
+              echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            else
+              echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                --no-rigid \
+                --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+            fi
+          fi
+
+          # If python code is available, scale affine
+          if [[ ${_arg_scale_affines} == "on" ]]; then
+            # Invert the transform so we scale from the correct direction
+            echo antsApplyTransforms -d 3 -t ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat -o Linear[ ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat,1 ] \
+            >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+
+            # Scale the transform
+            echo ${__dir}/interp_transform.py ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted.mat ${gradient_step} ${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat \
+            >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+
+            shapeupdate_affine="${_arg_output_dir}/${reg_type}/${i}/average/affine_inverted_scaled.mat"
+          else
+            shapeupdate_affine="[ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ]"
+          fi
+        else
+          # Generate identity transforms so affine shape update doesn't happen for nlin-only stage
+          echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat MakeAffineTransform 1 \
+            >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+          shapeupdate_affine="[ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ]"
+        fi
 
         # Now we update the template shape using the same steps as the original code
         if [[ ${reg_type} == "nlin" || ${reg_type} == "nlin-only" ]]; then
@@ -953,7 +1013,7 @@ for reg_type in "${_arg_stages[@]}"; do
           echo antsApplyTransforms -d 3 -e vector ${_arg_float} \
             -i ${_arg_output_dir}/${reg_type}/${i}/average/scaled_warp.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
-            -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+            -t ${shapeupdate_affine} \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
@@ -962,7 +1022,7 @@ for reg_type in "${_arg_stages[@]}"; do
             -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
-            -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+            -t ${shapeupdate_affine} \
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
             -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
@@ -976,7 +1036,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
               -n GenericLabel \
-              -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+              -t ${shapeupdate_affine} \
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
               -t ${_arg_output_dir}/${reg_type}/${i}/average/affine_scaled_warp.nii.gz \
@@ -991,7 +1051,7 @@ for reg_type in "${_arg_stages[@]}"; do
             -i ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             -o ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz \
             -n BSpline[5] \
-            -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+            -t ${shapeupdate_affine} \
             -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
             >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
@@ -1001,7 +1061,7 @@ for reg_type in "${_arg_stages[@]}"; do
               -i ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
               -o ${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz \
               -n GenericLabel \
-              -t [ ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat,1 ] \
+              -t ${shapeupdate_affine} \
               -r ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
               >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           fi
