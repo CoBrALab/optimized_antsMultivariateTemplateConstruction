@@ -725,13 +725,15 @@ if [[ ${_arg_starting_target} == "none" ]]; then
   else
     last_round_job=""
   fi
-  target=${_arg_output_dir}/initialaverage/initialtarget.nii.gz
+  cp -f ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_output_dir}/initialtarget.nii.gz
+  target=${_arg_output_dir}/initialtarget.nii.gz
 else
   info "Checking starting target"
   if [[ ! -s ${_arg_starting_target} ]]; then
     failure "Starting target ${_arg_starting_target} is non-existant or zero size"
   fi
-  target=${_arg_starting_target}
+  cp -f ${_arg_starting_target} ${_arg_output_dir}/initialtarget.nii.gz
+  target=${_arg_output_dir}/initialtarget.nii.gz
   last_round_job=""
 fi
 
@@ -754,13 +756,13 @@ for reg_type in "${_arg_stages[@]}"; do
   if [[ "${reg_type}" == *volgenmodel*  ]]; then
     tmpdir=$(mktemp -d)
     info "Calculating maximum image feature dimension of template for volgenmodel iterations"
-    ThresholdImage 3 ${target} ${tmpdir}/bgmask.h5 1e-12 Inf 1 0
-    ThresholdImage 3 ${target} ${tmpdir}/otsu.h5 Otsu 4 ${tmpdir}/bgmask.h5 &> /dev/null
+    ThresholdImage 3 ${_arg_output_dir}/initialtarget.nii.gz ${tmpdir}/bgmask.h5 1e-12 Inf 1 0
+    ThresholdImage 3 ${_arg_output_dir}/initialtarget.nii.gz ${tmpdir}/otsu.h5 Otsu 4 ${tmpdir}/bgmask.h5 &> /dev/null
     ThresholdImage 3 ${tmpdir}/otsu.h5 ${tmpdir}/otsu.h5 2 Inf 1 0
     LabelGeometryMeasures 3 ${tmpdir}/otsu.h5 none ${tmpdir}/geometry.csv &> /dev/null
-    volgenmodel_fixed_maximum_resolution=$(python -c "print(max([ a*b for a,b in zip( [ a-b for a,b in zip( [float(x) for x in \"$(tail -1 ${tmpdir}/geometry.csv | cut -d, -f 14,16,18)\".split(\",\") ],[float(x) for x in \"$(tail -1 ${tmpdir}/geometry.csv | cut -d, -f 13,15,17)\".split(\",\") ])],[abs(x) for x in [float(x) for x in \"$(PrintHeader ${target} 1)\".split(\"x\")]])]))")
+    volgenmodel_fixed_maximum_resolution=$(python -c "print(max([ a*b for a,b in zip( [ a-b for a,b in zip( [float(x) for x in \"$(tail -1 ${tmpdir}/geometry.csv | cut -d, -f 14,16,18)\".split(\",\") ],[float(x) for x in \"$(tail -1 ${tmpdir}/geometry.csv | cut -d, -f 13,15,17)\".split(\",\") ])],[abs(x) for x in [float(x) for x in \"$(PrintHeader ${_arg_output_dir}/initialtarget.nii.gz 1)\".split(\"x\")]])]))")
     info "Calculating minimum image feature dimension of template for volgenmodel iterations"
-    volgenmodel_fixed_minimum_resolution=$(python -c "print(min([abs(x) for x in [float(x) for x in \"$(PrintHeader ${target} 1)\".split(\"x\")]]))")
+    volgenmodel_fixed_minimum_resolution=$(python -c "print(min([abs(x) for x in [float(x) for x in \"$(PrintHeader ${_arg_output_dir}/initialtarget.nii.gz 1)\".split(\"x\")]]))")
     volgenmodel_iterations=$(ants_generate_iterations.py --min ${volgenmodel_fixed_minimum_resolution} --max ${volgenmodel_fixed_maximum_resolution} | grep shrink | grep -o x | wc -l)
     info "volgenmodel registration will perform ${volgenmodel_iterations} iterations with ${stage_iterations} repeats at each level"
     rm -rf ${tmpdir}
@@ -785,7 +787,7 @@ for reg_type in "${_arg_stages[@]}"; do
         gradient_step=${_arg_gradient_step[-1]}
       fi
 
-      if [[ ${target} == ${_arg_starting_target} || $(basename ${target}) == "initialtarget.nii.gz" ]]; then
+      if [[ ${target} == ${_arg_output_dir}/initialtarget.nii.gz ]]; then
         use_histogram=""
       else
         use_histogram="--histogram-matching"
