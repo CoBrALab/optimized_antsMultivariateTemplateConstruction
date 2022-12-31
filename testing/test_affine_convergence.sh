@@ -17,7 +17,7 @@ for dir in ${1}/similarity/*/; do
         fi
     done | parallel
     echo similarity,$(basename ${dir}),$(calc $(xfm2det ${dir}/transforms/*xfm | cut -d "," -f 2 | tail -n +2 | paste -sd+ | bc) / $(ls -1q  ${dir}/transforms/*xfm | wc -l) )
-done
+done | sort -h --field-separator=',' --key=2
 
 
 for dir in ${1}/affine/*/; do
@@ -27,7 +27,7 @@ for dir in ${1}/affine/*/; do
         fi
     done | parallel
     echo affine,$(basename ${dir}),$(calc $(xfm2det ${dir}/transforms/*xfm | cut -d "," -f 2 | tail -n +2 | paste -sd+ | bc) / $(ls -1q  ${dir}/transforms/*xfm | wc -l) )
-done
+done | sort -h --field-separator=',' --key=2
 
 for dir in ${1}/nlin/*/; do
     for file in ${dir}/transforms/*mat; do
@@ -36,4 +36,4 @@ for dir in ${1}/nlin/*/; do
         fi
     done | parallel
     echo nlin,$(basename ${dir}),$(calc $(xfm2det ${dir}/transforms/*xfm | cut -d "," -f 2 | tail -n +2 | paste -sd+ | bc) / $(ls -1q  ${dir}/transforms/*xfm | wc -l) )
-done
+done | sort -h --field-separator=',' --key=2
