@@ -825,7 +825,7 @@ for reg_type in "${_arg_stages[@]}"; do
           fi
 
           # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled), also do so for nlin-only stages
-          if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ( ${_arg_reuse_affines} == "on" || ${reg_type} == "nlin-only" || ${reg_type} == *volgenmodel*  ) ]]; then
+          if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ( ${_arg_reuse_affines} == "on" || ${reg_type} == "nlin-only" ) ]]; then
             bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
           else
             bootstrap=""
@@ -874,19 +874,18 @@ for reg_type in "${_arg_stages[@]}"; do
                 >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
             elif [[ ${reg_type} == *volgenmodel* ]]; then
               # nlin-only registration, affines always bootstrapped from previous iteration (if there is a previous)
-              walltime_reg=${_arg_walltime_nonlinear}
-              echo antsRegistration_affine_SyN.sh --clobber \
-                --volgenmodel-iteration ${k} \
-                ${_arg_float} ${_arg_fast} \
-                ${use_histogram} \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
-                ${_arg_mask_extract} ${_mask} \
-                ${bootstrap} \
-                --skip-linear \
-                --convergence ${_arg_convergence} \
-                ${_arg_inputs[${j}]} ${target} \
-                ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
-                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+                echo antsRegistration_affine_SyN.sh --clobber \
+                  --volgenmodel-iteration ${k} \
+                  ${_arg_float} ${_arg_fast} \
+                  ${use_histogram} \
+                  -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+                  ${_arg_mask_extract} ${_mask} \
+                  --skip-linear \
+                  --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
+                  --convergence ${_arg_convergence} \
+                  ${_arg_inputs[${j}]} ${target} \
+                  ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
+                  >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
             fi
           fi
           # If input masks were provided, resample them using the registration
