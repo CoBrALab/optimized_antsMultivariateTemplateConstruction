@@ -773,9 +773,16 @@ for reg_type in "${_arg_stages[@]}"; do
   while ((k <= volgenmodel_iterations)); do
   i=0
 
-
     if [[ "${reg_type}" == *volgenmodel*  ]]; then
       reg_type=volgenmodel-nlin_${k}
+
+      IFS=: read h m s <<<"${_arg_walltime_nonlinear%.*}"
+      walltime_reg=$((10#$s+10#$m*60+10#$h*3600))
+      walltime_reg=$(calc "int(${walltime_reg}*8^(${k}/${volgenmodel_iterations} - 1))")
+      if ((walltime_reg < 900)); then
+        walltime_reg=900
+      fi
+      walltime_reg=$(date -d@${walltime_reg} -u +%H:%M:%S)
     fi
 
     while ((i < stage_iterations)); do
