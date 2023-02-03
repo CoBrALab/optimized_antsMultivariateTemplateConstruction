@@ -555,7 +555,7 @@ fi
 
 # Prefight check for required programs
 for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
-  ThresholdImage ExtractRegionFromImageByMask antsAI \
+  ThresholdImage ExtractRegionFromImageByMask antsAI ConvertImage \
   antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
   antsRegistration_affine_SyN.sh; do
 
@@ -1183,11 +1183,12 @@ fi
 
 if [[ -s ${_arg_final_target} ]]; then
   mkdir -p ${_arg_output_dir}/final-target
+  ConvertImage 3 ${_arg_final_target} ${_arg_output_dir}/final-target/final_target.nii.gz
   if [[ ! -s ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz ]]; then
     echo antsRegistration_affine_SyN.sh \
       ${_arg_float} ${_arg_fast} \
       ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      ${_arg_final_target} \
+      ${_arg_output_dir}/final-target/final_target.nii.gz \
       ${_arg_output_dir}/final-target/to_target_ \
       > ${_arg_output_dir}/jobs/${__datetime}/final_target
 
