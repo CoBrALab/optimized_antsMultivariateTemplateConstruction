@@ -1186,21 +1186,24 @@ fi
 
 if [[ -s ${_arg_final_target} ]]; then
   mkdir -p ${_arg_output_dir}/final-target
-  ConvertImage 3 ${_arg_final_target} ${_arg_output_dir}/final-target/final_target.nii.gz
   if [[ ! -s ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz ]]; then
+    echo ConvertImage 3 ${_arg_final_target} ${_arg_output_dir}/final-target/final_target.nii.gz \
+        > ${_arg_output_dir}/jobs/${__datetime}/final_target
     echo antsRegistration_affine_SyN.sh \
       ${_arg_float} ${_arg_fast} \
       ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
       ${_arg_output_dir}/final-target/final_target.nii.gz \
       ${_arg_output_dir}/final-target/to_target_ \
-      > ${_arg_output_dir}/jobs/${__datetime}/final_target
+        >> ${_arg_output_dir}/jobs/${__datetime}/final_target
 
     debug "$(cat ${_arg_output_dir}/jobs/${__datetime}/final_target)"
 
     if [[ ${_arg_dry_run} == "off" ]]; then
+      # We use the walltime for a linear job here because its a single registration
       qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
         --walltime ${_arg_walltime_linear} \
         ${_arg_job_predepend} \
+        --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_$((i - 1))_shapeupdate \
         -N ${_arg_jobname_prefix}modelbuild_${__datetime}_final_target \
         -- bash ${_arg_output_dir}/jobs/${__datetime}/final_target
     fi
