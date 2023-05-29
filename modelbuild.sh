@@ -640,6 +640,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
           --walltime ${_arg_walltime_short} \
           -N ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage \
+          ${_arg_job_predepend} \
           -- bash ${_arg_output_dir}/jobs/${__datetime}/initialaverage
       fi
 
@@ -674,6 +675,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
           --walltime ${_arg_walltime_short} \
           -N ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_dumb \
+          ${_arg_job_predepend} \
           -- bash ${_arg_output_dir}/jobs/${__datetime}/initialaverage_dumb
       fi
 
@@ -963,6 +965,7 @@ for reg_type in "${_arg_stages[@]}"; do
           qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
             --walltime ${walltime_reg} \
             -N ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg \
+            ${_arg_job_predepend} \
             ${last_round_job} \
             ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
           if [[ -s ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample ]]; then
@@ -1155,7 +1158,7 @@ for reg_type in "${_arg_stages[@]}"; do
             qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
               --walltime ${_arg_walltime_short} -N ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_shapeupdate \
               ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg \
-              ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskaverage \
+              --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskaverage \
               -- bash ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           fi
           last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_shapeupdate"
@@ -1192,6 +1195,7 @@ if [[ -s ${_arg_final_target} ]]; then
     if [[ ${_arg_dry_run} == "off" ]]; then
       qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
         --walltime ${_arg_walltime_linear} \
+        ${_arg_job_predepend} \
         -N ${_arg_jobname_prefix}modelbuild_${__datetime}_final_target \
         -- bash ${_arg_output_dir}/jobs/${__datetime}/final_target
     fi
