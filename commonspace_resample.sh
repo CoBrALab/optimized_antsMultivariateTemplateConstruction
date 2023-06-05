@@ -5,14 +5,16 @@
 # ARG_OPTIONAL_SINGLE([type],[],[Walltime for short running stages (averaging, resampling, smoothing)],[quantitative])
 # ARG_TYPE_GROUP_SET([typegroup],[TYPE],[type],[label,quantitative,image])
 # ARG_OPTIONAL_SINGLE([target-space],[],[Target resampling space],[unbiased])
-# ARG_TYPE_GROUP_SET([spacegroup],[SPACE],[target-space],[unbiased,final-target])
+# ARG_TYPE_GROUP_SET([spacegroup],[SPACE],[target-space],[unbiased,final-target,secondlevel])
 # ARG_OPTIONAL_SINGLE([walltime],[],[Walltime for resampling],[00:15:00])
 # ARG_OPTIONAL_BOOLEAN([block],[],[For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished.],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
 # ARG_OPTIONAL_SINGLE([jobname-prefix],[],[Prefix to add to front of job names, used by twolevel wrapper],[])
 # ARG_OPTIONAL_SINGLE([resample-inputs],[],[Files to be resampled into common space, structured the same as the input to modelbuild.sh],[])
-# ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per input, same as those provided to modelbuild.sh],[1])
+# ARG_OPTIONAL_SINGLE([prepend-transforms],[],[Transform files which align resample-inputs to inputs, will be added to the transform stack, append with :1 to indicate applying the inverse],[])
+# ARG_OPTIONAL_SINGLE([append-transforms],[],[Comma seperated list of transforms to apply at the end of transform chain, used by twolevel wrapper],[])
+# ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per input, same as those provided to modelbuild.sh],[])
 # ARGBASH_SET_INDENT([  ])
 # ARGBASH_GO()
 # needed because of Argbash --> m4_ignore([
@@ -44,12 +46,12 @@ typegroup()
 
 spacegroup()
 {
-	local _allowed=("unbiased" "final-target") _seeking="$1"
+	local _allowed=("unbiased" "final-target" "secondlevel") _seeking="$1"
 	for element in "${_allowed[@]}"
 	do
 		test "$element" = "$_seeking" && echo "$element" && return 0
 	done
-	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'unbiased' and 'final-target'" 4
+	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'unbiased', 'final-target' and 'secondlevel'" 4
 }
 
 
@@ -62,7 +64,6 @@ begins_with_short_option()
 
 # THE DEFAULTS INITIALIZATION - POSITIONALS
 _positionals=()
-_arg_inputs="1"
 # THE DEFAULTS INITIALIZATION - OPTIONALS
 _arg_output_dir="output"
 _arg_float="off"
@@ -74,24 +75,28 @@ _arg_debug="off"
 _arg_dry_run="off"
 _arg_jobname_prefix=
 _arg_resample_inputs=
+_arg_prepend_transforms=
+_arg_append_transforms=
 
 
 print_help()
 {
   printf '%s\n' "Common-space resampling for modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--type <TYPE>] [--target-space <SPACE>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] [--resample-inputs <arg>] [<inputs>]\n' "$0"
-  printf '\t%s\n' "<inputs>: Input text files, one line per input, same as those provided to modelbuild.sh (default: '1')"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--type <TYPE>] [--target-space <SPACE>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] [--resample-inputs <arg>] [--prepend-transforms <arg>] [--append-transforms <arg>] <inputs>\n' "$0"
+  printf '\t%s\n' "<inputs>: Input text files, one line per input, same as those provided to modelbuild.sh"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements, reduce precision) (off by default)"
   printf '\t%s\n' "--type: Walltime for short running stages (averaging, resampling, smoothing). Can be one of: 'label', 'quantitative' and 'image' (default: 'quantitative')"
-  printf '\t%s\n' "--target-space: Target resampling space. Can be one of: 'unbiased' and 'final-target' (default: 'unbiased')"
+  printf '\t%s\n' "--target-space: Target resampling space. Can be one of: 'unbiased', 'final-target' and 'secondlevel' (default: 'unbiased')"
   printf '\t%s\n' "--walltime: Walltime for resampling (default: '00:15:00')"
   printf '\t%s\n' "--block, --no-block: For qbatch SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
   printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
   printf '\t%s\n' "--resample-inputs: Files to be resampled into common space, structured the same as the input to modelbuild.sh (no default)"
+  printf '\t%s\n' "--prepend-transforms: Transform files which align resample-inputs to inputs, will be added to the transform stack, append with :1 to indicate applying the inverse (no default)"
+  printf '\t%s\n' "--append-transforms: Comma seperated list of transforms to apply at the end of transform chain, used by twolevel wrapper (no default)"
 }
 
 
@@ -174,6 +179,22 @@ parse_commandline()
       --resample-inputs=*)
         _arg_resample_inputs="${_key##--resample-inputs=}"
         ;;
+      --prepend-transforms)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_prepend_transforms="$2"
+        shift
+        ;;
+      --prepend-transforms=*)
+        _arg_prepend_transforms="${_key##--prepend-transforms=}"
+        ;;
+      --append-transforms)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_append_transforms="$2"
+        shift
+        ;;
+      --append-transforms=*)
+        _arg_append_transforms="${_key##--append-transforms=}"
+        ;;
       *)
         _last_positional="$1"
         _positionals+=("$_last_positional")
@@ -187,7 +208,9 @@ parse_commandline()
 
 handle_passed_args_count()
 {
-  test "${_positionals_count}" -le 1 || _PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect between 0 and 1, but got ${_positionals_count} (the last one was: '${_last_positional}')." 1
+  local _required_args_string="'inputs'"
+  test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require exactly 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
+  test "${_positionals_count}" -le 1 || _PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect exactly 1 (namely: $_required_args_string), but got ${_positionals_count} (the last one was: '${_last_positional}')." 1
 }
 
 
@@ -218,7 +241,6 @@ assign_positional_args 1 "${_positionals[@]}"
 # [ <-- needed because of Argbash
 set -uo pipefail
 set -eE -o functrace
-
 
 # Load up helper scripts and define helper variables
 # shellcheck source=helpers.sh
@@ -255,8 +277,16 @@ else
   mapfile -t _arg_resample_inputs <${_arg_resample_inputs}
 fi
 
+# Load input file into array
+if [[ ( -n ${_arg_prepend_transforms}) &&  (! -s ${_arg_prepend_transforms}) ]]; then
+  failure "Input file ${_arg_prepend_transforms} is non-existent or zero size"
+elif [[ -n ${_arg_prepend_transforms} ]]; then
+  mapfile -t _arg_prepend_transforms <${_arg_prepend_transforms}
+else
+  _arg_prepend_transforms=()
+fi
 
-for file in "${_arg_inputs[@]}" "${_arg_resample_inputs}"; do
+for file in "${_arg_inputs[@]}" "${_arg_resample_inputs[@]}" "${_arg_prepend_transforms[@]}"; do
   if [[ ! -s ${file} ]]; then
     failure "Input file ${file} is non-existent or zero size"
   fi
@@ -291,14 +321,22 @@ fi
 if [[ ${_arg_target_space} == "unbiased" ]]; then
   _arg_target_space="-r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz"
   final_target_transforms=""
+  real_outputdir="${_arg_output_dir}/commonspace-resampled"
 elif [[ ${_arg_target_space} == "final-target" ]]; then
   if [[ -s ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz ]]; then
-    #Need to copy the target in modelbuild.sh
     _arg_target_space="-r ${_arg_output_dir}/final-target/final_target.nii.gz"
     final_target_transforms="-t ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz -t ${_arg_output_dir}/final-target/to_target_0GenericAffine.mat"
+    real_outputdir="${_arg_output_dir}/commonspace-resampled/final-target"
   else
     fatal "Final target transform ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz not found"
   fi
+elif [[ ${_arg_target_space} == "secondlevel" ]]; then
+  IFS=',' read -r -a _arg_append_transforms <<<${_arg_append_transforms}
+  for transform in "${_arg_append_transforms[@]}"; do
+    final_target_transforms+="-t ${transform} "
+  done
+  _arg_target_space="-r $(dirname $(dirname ${_arg_output_dir}))/secondlevel/final/average/template_sharpen_shapeupdate.nii.gz"
+  real_outputdir="$(dirname $(dirname ${_arg_output_dir}))/secondlevel/commonspace-resampled/$(basename ${_arg_output_dir})"
 fi
 
 mkdir -p ${_arg_output_dir}/commonspace-resampled
@@ -306,14 +344,24 @@ mkdir -p ${_arg_output_dir}/commonspace-resampled
 i=0
 for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/commonspace-resampled/$(basename ${_arg_resample_inputs[i]}) ]]; then
-    echo antsApplyTransforms  -d 3 --verbose ${_arg_float} \
-      -i ${_arg_resample_inputs[i]} \
-      ${interpolation} \
-      ${_arg_target_space} \
-      ${final_target_transforms} \
-      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz \
-      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
-      -o ${_arg_output_dir}/commonspace-resampled/$(basename ${_arg_resample_inputs[i]})
+    if [[ ${_arg_prepend_transform[i]:-} ]]; then
+      if [[ "${_arg_prepend_transform[i]}" == *:1 ]]; then
+        transform_resample_input_to_input="-t [ ${_arg_prepend_transform[i]%:1},1 ]"
+      else
+        transform_resample_input_to_input="-t ${_arg_prepend_transform[i]}"
+      fi
+    else
+      transform_resample_input_to_input=""
+    fi
+    echo antsApplyTransforms -d 3 --verbose ${_arg_float} \
+                             -i ${_arg_resample_inputs[i]} \
+                             ${interpolation} \
+                             ${_arg_target_space} \
+                             ${final_target_transforms} \
+                             -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_1Warp.nii.gz \
+                             -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
+                             ${transform_resample_input_to_input} \
+                             -o ${real_outputdir}/$(basename ${_arg_resample_inputs[i]})
   fi
   ((++i))
 done > ${_arg_output_dir}/jobs/${__datetime}/commonspace_resample
