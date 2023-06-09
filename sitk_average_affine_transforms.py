@@ -71,7 +71,7 @@ if __name__ == "__main__":
             """,
     )
     parser.add_argument(
-        "--file_list",
+        "--file-list",
         type=str,
         nargs="*",  # 0 or more values expected => creates a list
         required=True,
