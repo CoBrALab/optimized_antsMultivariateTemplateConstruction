@@ -826,7 +826,7 @@ for reg_type in "${_arg_stages[@]}"; do
         use_histogram="--histogram-matching"
       fi
 
-      if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_shapeupdate.nii.gz ]]; then
+      if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ]]; then
         mkdir -p ${_arg_output_dir}/${reg_type}/${i}/{transforms,resample,average}
         mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
 
@@ -1167,6 +1167,10 @@ for reg_type in "${_arg_stages[@]}"; do
       fi
 
       target=${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz
+      if [[ -n ${target_mask} ]]; then
+          target_mask=${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz
+      fi
+
       ((++i))
     done
 
