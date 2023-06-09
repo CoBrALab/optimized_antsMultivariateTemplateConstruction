@@ -576,8 +576,8 @@ fi
 
 # Check that python code will run
 if [[ ${_arg_average_prog} == "python" ]]; then
-  ${__dir}/sitk_image_math.py -h &>/dev/null || failure "modelbuild_averager.py failed to run, check python version and dependencies"
-  ${__dir}/average_transform.py -h &>/dev/null || failure "average_transform.py failed to run, check python version and dependencies"
+  ${__dir}/sitk_image_math.py -h &>/dev/null || failure "sitk_image_math.py failed to run, check python version and dependencies"
+  ${__dir}/sitk_average_affine_transforms.py -h &>/dev/null || failure "sitk_average_affine_transforms.py failed to run, check python version and dependencies"
 fi
 
 # Check that interpolator works if requested
@@ -1042,13 +1042,13 @@ for reg_type in "${_arg_stages[@]}"; do
               fi
             else
               if [[ ${_arg_rigid_update} == "on" ]]; then
-                echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-                  --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                echo ${__dir}/sitk_average_affine_transforms.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                  --file-list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
                   >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
               else
-                echo ${__dir}/average_transform.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
+                echo ${__dir}/sitk_average_affine_transforms.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
                   --no-rigid \
-                  --file_list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                  --file-list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
                   >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
               fi
             fi
