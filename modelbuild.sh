@@ -576,7 +576,7 @@ fi
 
 # Check that python code will run
 if [[ ${_arg_average_prog} == "python" ]]; then
-  ${__dir}/modelbuild_averager.py -h &>/dev/null || failure "modelbuild_averager.py failed to run, check python version and dependencies"
+  ${__dir}/sitk_image_math.py -h &>/dev/null || failure "modelbuild_averager.py failed to run, check python version and dependencies"
   ${__dir}/average_transform.py -h &>/dev/null || failure "average_transform.py failed to run, check python version and dependencies"
 fi
 
@@ -611,11 +611,11 @@ average_images () {
       ;;
     esac
   else
-    echo ${__dir}/modelbuild_averager.py \
+    echo ${__dir}/sitk_image_math.py \
       -o ${output} \
       --method ${_arg_average_type} \
       ${_arg_average_norm:+--normalize} \
-      --file_list "${avg_inputs[@]}"
+      --file-list "${avg_inputs[@]}"
   fi
 }
 
