@@ -11,7 +11,7 @@ if __name__ == "__main__":
                         help="""
                         Name of output average file.
                         """)
-    parser.add_argument('--file_list', type=str,
+    parser.add_argument('--file-list', type=str,
                         nargs="*",  # 0 or more values expected => creates a list
                         required=True,
                         help="""
@@ -22,13 +22,17 @@ if __name__ == "__main__":
                         help="""
                         Specify the type of average to create from the image list.
                         """)
-    parser.add_argument("--trim_percent", type=float, default=0.15,
+    parser.add_argument("--trim-proportion", type=float, default=0.05,
                         help="""
                         Specify the fraction to trim off if using trimmed_mean.
                         """)
     parser.add_argument("--normalize", dest='normalize', action='store_true',
                         help="""
                         Whether to divide each image by its mean before computing average.
+                        """)
+    parser.add_argument("-v", "--verbose", action='store_true',
+                        help="""
+                        Be verbose
                         """)
     opts = parser.parse_args()
 
@@ -122,14 +126,18 @@ if __name__ == "__main__":
 
         # Create empty array to stick data in
         # Need to reverse the dimension order b/c numpy and ITK are backwards
-        concat_array = np.empty(shape=[0, np.prod(averageRef.GetSize())])
+        concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
         shape = averageRef.GetSize()[::-1]
 
-        for file in opts.file_list:
+        for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
+            if opts.verbose:
+                print(f"Reading image {file} {i+1}/{len(opts.file_list)}")
             img = sitk.ReadImage(file)
             if images_different:
+                if opts.verbose:
+                    print(f"Resampling image {file}")
                 img = sitk.Resample(
                     img,
                     averageRef,
@@ -138,46 +146,52 @@ if __name__ == "__main__":
                 )
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array = np.vstack((concat_array, array.flatten()/array.mean()))
+                concat_array[i,:] = array.flatten()/array.mean()
             else:
-                concat_array = np.vstack((concat_array, array.flatten()))
+                concat_array[i,:] = array.flatten()
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
-        concat_array = np.empty(shape=[0, np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
+        concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
         shape = sitk.GetArrayViewFromImage(inputRefImage).shape[1:]
-        for file in opts.file_list:
+        for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
+            if opts.verbose:
+                print(f"Reading image {file} {i+1}/{len(opts.file_list)}")
             img = sitk.ReadImage(file)
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array = np.vstack((concat_array, array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)))
+                concat_array[i,:] = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
             else:
-                concat_array = np.vstack((concat_array, array.reshape(array.shape[0], -1)))
+                concat_array[i,:] = array.reshape(array.shape[0], -1)
 
     elif image_type == 'warp':
         # Assume all warp fields are in the same space
-        concat_array = np.empty(shape=[0, np.prod(inputRefImage.GetSize())*3])
+        concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
         shape = sitk.GetArrayViewFromImage(inputRefImage).shape
-        for file in opts.file_list:
+        for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
+            if opts.verbose:
+                print(f"Reading image {file}")
             img = sitk.ReadImage(file)
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array = np.vstack((concat_array, array.flatten()/array.mean()))
+                concat_array[i,:] = array.flatten()/array.mean()
             else:
-                concat_array = np.vstack((concat_array, array.flatten()))
+                concat_array[i,:] = array.flatten()
 
+    if opts.verbose:
+        print(f"Computing output {opts.method}")
     if opts.method == 'mean':
         average = np.mean(concat_array, axis=0)
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
         from scipy import stats
-        average = stats.trim_mean(concat_array, opts.trim_percent, axis=0)
-    elif opts.method == 'efficient_trimean': 
+        average = stats.trim_mean(concat_array, opts.trim_proportion, axis=0)
+    elif opts.method == 'efficient_trimean':
         # computes the average from the 20th, 50th and 80th percentiles https://en.wikipedia.org/wiki/Trimean
         average = np.quantile(concat_array, (0.2,0.5,0.8),axis=0).mean(axis=0)
     elif opts.method == 'huber':
