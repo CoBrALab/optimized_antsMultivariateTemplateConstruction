@@ -1075,7 +1075,7 @@ for reg_type in "${_arg_stages[@]}"; do
           fi
 
           # Now we update the template shape using the same steps as the original code
-          if [[ ( ${reg_type} == "nlin" || ${reg_type} == "nlin-only" ) && ${_arg_nlin_shape_update} == "on" ]]; then
+          if [[ ( ${reg_type} == *nlin* ) && ( ${_arg_nlin_shape_update} == "on" ) ]]; then
             # Average all the warp transforms
             echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
               0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_1Warp.nii.gz "; done) \
