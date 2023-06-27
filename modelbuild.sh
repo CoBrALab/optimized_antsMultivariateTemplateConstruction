@@ -790,7 +790,7 @@ for reg_type in "${_arg_stages[@]}"; do
     info "Calculating minimum image feature dimension of template for volgenmodel iterations"
     volgenmodel_fixed_minimum_resolution=$(python -c "print(min([abs(x) for x in [float(x) for x in \"$(PrintHeader ${_arg_output_dir}/initialtarget.nii.gz 1)\".split(\"x\")]]))")
     volgenmodel_iterations=$(ants_generate_iterations.py --min ${volgenmodel_fixed_minimum_resolution} --max ${volgenmodel_fixed_maximum_resolution} | grep shrink | grep -o x | wc -l)
-    info "volgenmodel registration will perform ${volgenmodel_iterations} iterations with ${stage_iterations} repeats at each level"
+    info "volgenmodel registration will perform ${volgenmodel_iterations} levels with ${stage_iterations} repeats at each level"
     rm -rf ${tmpdir}
   else
     volgenmodel_iterations=0
@@ -851,8 +851,8 @@ for reg_type in "${_arg_stages[@]}"; do
           fi
 
           # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled), also do so for nlin-only stages
-          if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ( ${_arg_reuse_affines} == "on" || ${reg_type} == "nlin-only" ) ]]; then
-            bootstrap="--close --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
+          if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ${_arg_reuse_affines} == "on" ]]; then
+            bootstrap="--initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
           else
             bootstrap=""
           fi
