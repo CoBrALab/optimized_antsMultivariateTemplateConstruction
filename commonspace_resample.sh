@@ -344,11 +344,11 @@ mkdir -p ${_arg_output_dir}/commonspace-resampled
 i=0
 for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/commonspace-resampled/$(basename ${_arg_resample_inputs[i]}) ]]; then
-    if [[ ${_arg_prepend_transform[i]:-} ]]; then
-      if [[ "${_arg_prepend_transform[i]}" == *:1 ]]; then
-        transform_resample_input_to_input="-t [ ${_arg_prepend_transform[i]%:1},1 ]"
+    if [[ -n ${_arg_prepend_transforms[i]:-} ]]; then
+      if [[ "${_arg_prepend_transforms[i]}" == *:1 ]]; then
+        transform_resample_input_to_input="-t [ ${_arg_prepend_transforms[i]%:1},1 ]"
       else
-        transform_resample_input_to_input="-t ${_arg_prepend_transform[i]}"
+        transform_resample_input_to_input="-t ${_arg_prepend_transforms[i]}"
       fi
     else
       transform_resample_input_to_input=""
