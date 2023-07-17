@@ -285,36 +285,36 @@ while read -r subject_scans; do
     info "Subject ${i} has only a single file, "${scans[@]}", and does not have a subject wise average, it will only have second-level cross sectional DBM"
   fi
 
-  debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${__datetime}/resample_jacobian)"
-  if [[ ${_arg_dry_run} == "off" ]]; then
-    qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${__datetime} \
-      --walltime ${_arg_walltime} \
-      -N dbm_twolevel_${__datetime}_resample_jacobian \
-      --depend "dbm_twolevel_${__datetime}*" \
-      ${_arg_output_dir}/secondlevel/jobs/${__datetime}/resample_jacobian
-  fi
-
-  debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${__datetime}/overall_jacobian)"
-  if [[ ${_arg_dry_run} == "off" ]]; then
-    qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${__datetime} \
-      --walltime ${_arg_walltime} \
-      -N dbm_twolevel_${__datetime}_overall_jacobian \
-      --depend "dbm_twolevel_${__datetime}_resample_jacobian" \
-      ${_arg_output_dir}/secondlevel/jobs/${__datetime}/overall_jacobian
-  fi
-
-  debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${__datetime}/smooth_jacobian)"
-  if [[ ${_arg_dry_run} == "off" ]]; then
-    qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${__datetime} \
-      --walltime ${_arg_walltime} \
-      -N dbm_twolevel_${__datetime}_smooth_jacobian \
-      --depend "dbm_twolevel_${__datetime}*" \
-      --depend "dbm_twolevel_${__datetime}_resample_jacobian" \
-      --depend "dbm_twolevel_${__datetime}_overall_jacobian" \
-      ${_arg_output_dir}/secondlevel/jobs/${__datetime}/smooth_jacobian
-  fi
-
   ((++i))
 done < ${_arg_inputs}
+
+debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${__datetime}/resample_jacobian)"
+if [[ ${_arg_dry_run} == "off" ]]; then
+  qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${__datetime} \
+    --walltime ${_arg_walltime} \
+    -N dbm_twolevel_${__datetime}_resample_jacobian \
+    --depend "dbm_twolevel_${__datetime}*" \
+    ${_arg_output_dir}/secondlevel/jobs/${__datetime}/resample_jacobian
+fi
+
+debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${__datetime}/overall_jacobian)"
+if [[ ${_arg_dry_run} == "off" ]]; then
+  qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${__datetime} \
+    --walltime ${_arg_walltime} \
+    -N dbm_twolevel_${__datetime}_overall_jacobian \
+    --depend "dbm_twolevel_${__datetime}_resample_jacobian" \
+    ${_arg_output_dir}/secondlevel/jobs/${__datetime}/overall_jacobian
+fi
+
+debug "$(cat ${_arg_output_dir}/secondlevel/jobs/${__datetime}/smooth_jacobian)"
+if [[ ${_arg_dry_run} == "off" ]]; then
+  qbatch --logdir ${_arg_output_dir}/secondlevel/logs/${__datetime} \
+    --walltime ${_arg_walltime} \
+    -N dbm_twolevel_${__datetime}_smooth_jacobian \
+    --depend "dbm_twolevel_${__datetime}*" \
+    --depend "dbm_twolevel_${__datetime}_resample_jacobian" \
+    --depend "dbm_twolevel_${__datetime}_overall_jacobian" \
+    ${_arg_output_dir}/secondlevel/jobs/${__datetime}/smooth_jacobian
+fi
 
 # ] <-- needed because of Argbash
