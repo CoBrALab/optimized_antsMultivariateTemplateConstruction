@@ -286,7 +286,7 @@ else
   _arg_prepend_transforms=()
 fi
 
-for file in "${_arg_inputs[@]}" "${_arg_resample_inputs[@]}" "${_arg_prepend_transforms[@]}"; do
+for file in "${_arg_inputs[@]}" "${_arg_resample_inputs[@]}" ${_arg_prepend_transforms[@]+"${_arg_prepend_transforms[@]}"}; do
   if [[ ! -s ${file} ]]; then
     failure "Input file ${file} is non-existent or zero size"
   fi
