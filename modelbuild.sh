@@ -832,7 +832,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
   else
     last_round_job=""
   fi
-  cp -f ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_output_dir}/initialtarget.nii.gz
+  ln -srf ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_output_dir}/initialtarget.nii.gz
   target=${_arg_output_dir}/initialtarget.nii.gz
 else
   info "Checking starting target"
