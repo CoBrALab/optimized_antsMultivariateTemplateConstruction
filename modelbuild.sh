@@ -12,6 +12,7 @@
 # ARG_OPTIONAL_SINGLE([syn-shrink-factors],[],[Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence],[])
 # ARG_OPTIONAL_SINGLE([syn-smoothing-sigmas],[],[Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence],[])
 # ARG_OPTIONAL_SINGLE([syn-convergence],[],[Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas],[])
+# ARG_OPTIONAL_SINGLE([syn-control],[],[Non-linear (SyN) gradient and regularization parameters, not checked for correctness],[0.1,3,0])
 # ARG_OPTIONAL_SINGLE([linear-shrink-factors],[],[Shrink factors for linear stages, provide to override automatic generation, must be provided with sigmas and convergence],[])
 # ARG_OPTIONAL_SINGLE([linear-smoothing-sigmas],[],[Smoothing sigmas for linear stages, provide to override automatic generation, must be provided with shrinks and convergence],[])
 # ARG_OPTIONAL_SINGLE([linear-convergence],[],[Convergence levels for linear stages, provide to override automatic generation, must be provided with shrinks and sigmas],[])
@@ -117,6 +118,7 @@ _arg_convergence="1e-7"
 _arg_syn_shrink_factors=
 _arg_syn_smoothing_sigmas=
 _arg_syn_convergence=
+_arg_syn_control="0.1,3,0"
 _arg_linear_shrink_factors=
 _arg_linear_smoothing_sigmas=
 _arg_linear_convergence=
@@ -149,7 +151,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text file, one line per input"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -163,6 +165,7 @@ print_help()
   printf '\t%s\n' "--syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)"
   printf '\t%s\n' "--syn-smoothing-sigmas: Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)"
   printf '\t%s\n' "--syn-convergence: Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)"
+  printf '\t%s\n' "--syn-control: Non-linear (SyN) gradient and regularization parameters, not checked for correctness (default: '0.1,3,0')"
   printf '\t%s\n' "--linear-shrink-factors: Shrink factors for linear stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)"
   printf '\t%s\n' "--linear-smoothing-sigmas: Smoothing sigmas for linear stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)"
   printf '\t%s\n' "--linear-convergence: Convergence levels for linear stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)"
@@ -292,6 +295,14 @@ parse_commandline()
         ;;
       --syn-convergence=*)
         _arg_syn_convergence="${_key##--syn-convergence=}"
+        ;;
+      --syn-control)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_syn_control="$2"
+        shift
+        ;;
+      --syn-control=*)
+        _arg_syn_control="${_key##--syn-control=}"
         ;;
       --linear-shrink-factors)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
@@ -971,6 +982,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_syn_convergence} \
                 ${_arg_syn_shrink_factors} \
                 ${_arg_syn_smoothing_sigmas} \
+                --syn-control ${_arg_syn_control} \
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}  | extension_strip).nii.gz \
                 ${_arg_mask_extract} ${_mask} \
                 ${bootstrap} \
@@ -990,6 +1002,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_syn_convergence} \
                 ${_arg_syn_shrink_factors} \
                 ${_arg_syn_smoothing_sigmas} \
+                --syn-control ${_arg_syn_control} \
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
                 ${_arg_mask_extract} ${_mask} \
                 ${bootstrap} \
