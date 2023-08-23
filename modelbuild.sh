@@ -648,7 +648,7 @@ fi
 for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
   ThresholdImage ExtractRegionFromImageByMask antsAI ConvertImage \
   antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
-  antsRegistration_affine_SyN.sh; do
+  antsRegistration_affine_SyN.sh parallel; do
 
   if ! command -v ${program} &>/dev/null; then
     failure "Required program ${program} not found!"

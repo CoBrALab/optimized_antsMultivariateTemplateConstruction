@@ -285,7 +285,7 @@ IFS=',' read -r -a _arg_jacobian_smooth <<<${_arg_jacobian_smooth}
 # Prefight check for required programs
 for program in qbatch ImageMath \
   ThresholdImage ExtractRegionFromImageByMask \
-  antsApplyTransforms; do
+  antsApplyTransforms parallel; do
 
   if ! command -v ${program} &>/dev/null; then
     failure "Required program ${program} not found!"
