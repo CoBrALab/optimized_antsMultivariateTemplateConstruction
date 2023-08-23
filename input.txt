@@ -1,0 +1,10 @@
+/home/ryanhaniff/Downloads/for_ryan/d8_0005_02.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0004_01.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0008_01.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0009_01.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0010_05.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0003_02.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0006_03.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0001_04.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0007_03.denoise.nii.gz
+/home/ryanhaniff/Downloads/for_ryan/d8_0002_03.denoise.nii.gz

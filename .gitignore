@@ -1,3 +1,4 @@
 output/
 logs/
 .qbatch/
+sitk_image_math.py
