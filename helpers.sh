@@ -126,3 +126,6 @@ function extension_strip()
 {
   sed -r 's/(.nii$|.nii.gz|.nrrd|.mnc|.mnc.gz)$//'
 }
+
+__dir="$(cd "$(dirname "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")" && pwd)"
+export PATH=${__dir}/minc-toolkit-extras:${PATH}

@@ -61,10 +61,11 @@ computational load
 ## Requirements
 
 This pipeline is primarity written in `bash`, and requires [ANTs](https://github.com/ANTsX/ANTs)
-for the primary commands, `antsRegistration_affine_SyN.sh` and `ants_generate_iterations.py`
-from [minc-toolkit-extras](https://github.com/CoBrALab/minc-toolkit-extras/) for the
-optimized registration generation, and [qbatch](https://github.com/pipitone/qbatch)
+for the primary commands, and [qbatch](https://github.com/pipitone/qbatch)
 for running commands locally or with cluster integration.
+
+A depdenency submodule of [minc-toolkit-extras](https://github.com/cobralab/minc-toolkit-extras)
+is automatically included with appropriate versioning via a submodule.
 
 (Optional) advanced averaging options are provided by a python scripts which require
 [SimpleITK](https://simpleitk.org/), [NumPy](https://numpy.org/), [SciPy](https://scipy.org/)
@@ -87,6 +88,17 @@ The following are features missing compared to `antsMultivariateTemplateConstruc
 - preprocessing
 - 2D
 - 4D
+
+## Installation
+
+Provided you have installed ANTs (via conda, binaries, or source), and qbatch (via pip)
+
+```
+$ git clone --recursive https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction.git
+```
+
+You can add this directory to your `PATH` or refer to the scritps from any working directory, it will
+properly find the rest of its dependent scripts.
 
 ## Basic usage
 
