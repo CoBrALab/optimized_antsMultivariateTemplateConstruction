@@ -37,6 +37,9 @@ if __name__ == "__main__":
                         """)
     opts = parser.parse_args()
 
+    def welford_algo():
+
+
     # start timer
     start = time.time()
 
@@ -133,6 +136,12 @@ if __name__ == "__main__":
         concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
         shape = averageRef.GetSize()[::-1]
 
+        # welford algo setup
+        # set the count
+        count = 0
+        mean = np.zeros(np.prod(averageRef.GetSize()))
+        squared_diff = np.zeros(np.prod(averageRef.GetSize()))
+
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
@@ -149,10 +158,22 @@ if __name__ == "__main__":
                     sitk.sitkLinear
                 )
             array = sitk.GetArrayViewFromImage(img)
+
             if opts.normalize: # divide the image values by its mean
                 concat_array[i,:] = array.flatten()/array.mean()
             else:
-                concat_array[i,:] = array.flatten()
+                # concat_array[i,:] = array.flatten()
+                count += 1
+                delta = array.flatten() - mean
+                mean += delta / count
+                delta2 = array.flatten() - mean
+                squared_diff += delta * delta2
+        
+        if count > 1:
+            # must do count -1 for unbiased estimator
+            variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
+        else: 
+            varaince = np.zeros(np.prod(averageRef.GetSize()))
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
