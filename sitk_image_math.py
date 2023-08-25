@@ -173,7 +173,7 @@ if __name__ == "__main__":
             # must do count -1 for unbiased estimator
             variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
         else: 
-            varaince = np.zeros(np.prod(averageRef.GetSize()))
+            variance = np.zeros(np.prod(averageRef.GetSize()))
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
