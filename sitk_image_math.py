@@ -38,7 +38,7 @@ if __name__ == "__main__":
     opts = parser.parse_args()
 
     def welford_algo():
-
+        pass
 
     # start timer
     start = time.time()
@@ -210,7 +210,8 @@ if __name__ == "__main__":
     if opts.verbose:
         print(f"Computing output {opts.method}")
     if opts.method == 'mean':
-        average = np.mean(concat_array, axis=0)
+        # average = np.mean(concat_array, axis=0)
+        average = mean
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
