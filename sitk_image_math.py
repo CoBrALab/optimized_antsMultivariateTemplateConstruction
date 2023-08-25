@@ -4,6 +4,7 @@ import os
 import numpy as np
 import SimpleITK as sitk
 import time
+from welford import Welford
 
 
 if __name__ == "__main__":
@@ -36,9 +37,6 @@ if __name__ == "__main__":
                         Be verbose
                         """)
     opts = parser.parse_args()
-
-    def welford_algo():
-        pass
 
     # start timer
     start = time.time()
@@ -142,6 +140,8 @@ if __name__ == "__main__":
         mean = np.zeros(np.prod(averageRef.GetSize()))
         squared_diff = np.zeros(np.prod(averageRef.GetSize()))
 
+        w = Welford()
+
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
@@ -160,14 +160,17 @@ if __name__ == "__main__":
             array = sitk.GetArrayViewFromImage(img)
 
             if opts.normalize: # divide the image values by its mean
-                concat_array[i,:] = array.flatten()/array.mean()
+                # concat_array[i,:] = array.flatten()/array.mean()
+                array = array.flatten()/array.mean()
             else:
                 # concat_array[i,:] = array.flatten()
-                count += 1
-                delta = array.flatten() - mean
-                mean += delta / count
-                delta2 = array.flatten() - mean
-                squared_diff += delta * delta2
+                array = array.flatten()
+                w.add(array)
+                # count += 1
+                # delta = array.flatten() - mean
+                # mean += delta / count
+                # delta2 = array.flatten() - mean
+                # squared_diff += delta * delta2
         
         if count > 1:
             # must do count -1 for unbiased estimator
@@ -211,7 +214,7 @@ if __name__ == "__main__":
         print(f"Computing output {opts.method}")
     if opts.method == 'mean':
         # average = np.mean(concat_array, axis=0)
-        average = mean
+        average = w.mean
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
