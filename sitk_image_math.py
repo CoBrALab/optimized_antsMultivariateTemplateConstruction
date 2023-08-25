@@ -214,6 +214,8 @@ if __name__ == "__main__":
         print(f"Computing output {opts.method}")
     if opts.method == 'mean':
         # average = np.mean(concat_array, axis=0)
+
+        # calculate mean using welford library
         average = w.mean
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
