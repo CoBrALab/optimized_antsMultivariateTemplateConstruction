@@ -137,6 +137,7 @@ if __name__ == "__main__":
         # welford algo setup
         # set the count
         count = 0
+        # setting up array of zeroes 
         mean = np.zeros(np.prod(averageRef.GetSize()))
         squared_diff = np.zeros(np.prod(averageRef.GetSize()))
 
@@ -164,19 +165,18 @@ if __name__ == "__main__":
                 array = array.flatten()/array.mean()
             else:
                 # concat_array[i,:] = array.flatten()
-                array = array.flatten()
-                w.add(array)
-                # count += 1
-                # delta = array.flatten() - mean
-                # mean += delta / count
-                # delta2 = array.flatten() - mean
-                # squared_diff += delta * delta2
-        
-        if count > 1:
-            # must do count -1 for unbiased estimator
-            variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
-        else: 
-            variance = np.zeros(np.prod(averageRef.GetSize()))
+
+                # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+                print("Welford image: ", count)
+                count += 1
+                # mean = mean + (array.flatten() - mean) / count # shorthand
+                delta = array.flatten() - mean
+                mean += delta / count
+                delta2 = array.flatten() - mean
+                squared_diff += delta * delta2
+
+            # must do count - 1 for unbiased estimator
+            # variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
