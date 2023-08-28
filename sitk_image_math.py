@@ -168,18 +168,18 @@ if __name__ == "__main__":
                 # concat_array[i,:] = array.flatten()
 
                 # https://www.geeksforgeeks.org/expression-for-mean-and-variance-in-a-running-stream/
-                count += 1
-                print("Welford image: ", count)
-                sum += array.flatten() 
-                mean += sum / count
+                # count += 1
+                # print("Welford image: ", count)
+                # sum += array.flatten() 
+                # mean += sum / count
 
                 # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
-                # print("Welford image: ", count)
-                # count += 1
-                # delta = array.flatten() - mean
-                # mean += delta / count
-                # delta2 = array.flatten() - mean
-                # squared_diff += delta * delta2
+                print("Welford image: ", count)
+                count += 1
+                delta = array.flatten() - mean
+                mean += delta / count
+                delta2 = array.flatten() - mean
+                squared_diff += delta * delta2
 
             # must do count - 1 for unbiased estimator
             # variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
