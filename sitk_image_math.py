@@ -138,6 +138,7 @@ if __name__ == "__main__":
         # set the count
         count = 0
         # setting up array of zeroes 
+        sum = np.zeros(np.prod(averageRef.GetSize()))
         mean = np.zeros(np.prod(averageRef.GetSize()))
         squared_diff = np.zeros(np.prod(averageRef.GetSize()))
 
@@ -166,14 +167,19 @@ if __name__ == "__main__":
             else:
                 # concat_array[i,:] = array.flatten()
 
-                # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
-                print("Welford image: ", count)
+                # https://www.geeksforgeeks.org/expression-for-mean-and-variance-in-a-running-stream/
                 count += 1
-                # mean = mean + (array.flatten() - mean) / count # shorthand
-                delta = array.flatten() - mean
-                mean += delta / count
-                delta2 = array.flatten() - mean
-                squared_diff += delta * delta2
+                print("Welford image: ", count)
+                sum += array.flatten() 
+                mean += sum / count
+
+                # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+                # print("Welford image: ", count)
+                # count += 1
+                # delta = array.flatten() - mean
+                # mean += delta / count
+                # delta2 = array.flatten() - mean
+                # squared_diff += delta * delta2
 
             # must do count - 1 for unbiased estimator
             # variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
