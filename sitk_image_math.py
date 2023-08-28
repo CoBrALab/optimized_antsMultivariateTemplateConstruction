@@ -177,8 +177,8 @@ if __name__ == "__main__":
                 print("Welford image: ", count)
                 delta = array.flatten() - mean
                 mean += delta / count
-                delta2 = array.flatten() - mean
-                squared_diff += delta * delta2
+                # delta2 = array.flatten() - mean
+                # squared_diff += delta * delta2
 
             # must do count - 1 for unbiased estimator
             # variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
