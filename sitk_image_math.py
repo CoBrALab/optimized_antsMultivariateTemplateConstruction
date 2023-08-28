@@ -10,17 +10,18 @@ import time
 def welford_algo_mean(array, count, mean): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
     # print("Welford image: ", count)
-    delta = array- mean
+    delta = array - mean
     mean += delta / count
     return count, mean
 
-def welford_algo_var(array, count, mean, sqaured_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+def welford_algo_var(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
     # print("Welford image: ", count)
     delta = array - mean
     mean += delta / count
     delta2 = array - mean
     squared_diff += delta * delta2
+    return count, mean, squared_diff
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -176,14 +177,21 @@ if __name__ == "__main__":
             if opts.normalize: # divide the image values by its mean
                 # concat_array[i,:] = array.flatten()/array.mean()
                 array = array.flatten()/array.mean()
-                welford_algo_mean(array, count, mean)
+                if opts.method == "var":
+                    count, mean, squared_diff = welford_algo_var(array, count, mean, squared_diff)
+                else:
+                    count, mean = welford_algo_mean(array, count, mean)
             else:
                 # concat_array[i,:] = array.flatten()
                 array = array.flatten()
-                count, mean = welford_algo_mean(array, count, mean)
+                if opts.method == "var":
+                    count, mean, squared_diff = welford_algo_var(array, count, mean, squared_diff)
+                else:
+                    count, mean = welford_algo_mean(array, count, mean)
 
-            # must do count - 1 for unbiased estimator
-            # variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
+            if opts.method == "var":
+                # must do count - 1 for unbiased estimator
+                variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
@@ -241,7 +249,8 @@ if __name__ == "__main__":
     elif opts.method == 'std':
         average = np.std(concat_array, axis=0)
     elif opts.method == 'var':
-        average = np.var(concat_array, axis=0)
+        # average = np.var(concat_array, axis=0)
+        average = variance
     elif opts.method == 'and':
         average = np.all(concat_array, axis=0).astype(float)
     elif opts.method == 'or':
