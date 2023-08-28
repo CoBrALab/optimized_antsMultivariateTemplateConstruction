@@ -4,8 +4,23 @@ import os
 import numpy as np
 import SimpleITK as sitk
 import time
-from welford import Welford
+# from welford import Welford
 
+
+def welford_algo_mean(array, count, mean): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+    count += 1
+    # print("Welford image: ", count)
+    delta = array- mean
+    mean += delta / count
+    return count, mean
+
+def welford_algo_var(array, count, mean, sqaured_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+    count += 1
+    # print("Welford image: ", count)
+    delta = array - mean
+    mean += delta / count
+    delta2 = array - mean
+    squared_diff += delta * delta2
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -141,8 +156,6 @@ if __name__ == "__main__":
         mean = np.zeros(np.prod(averageRef.GetSize()))
         squared_diff = np.zeros(np.prod(averageRef.GetSize()))
 
-        w = Welford()
-
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
@@ -163,22 +176,11 @@ if __name__ == "__main__":
             if opts.normalize: # divide the image values by its mean
                 # concat_array[i,:] = array.flatten()/array.mean()
                 array = array.flatten()/array.mean()
+                welford_algo_mean(array, count, mean)
             else:
                 # concat_array[i,:] = array.flatten()
-
-                # https://www.geeksforgeeks.org/expression-for-mean-and-variance-in-a-running-stream/
-                # count += 1
-                # print("Welford image: ", count)
-                # sum += array.flatten() 
-                # mean += sum / count
-
-                # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
-                count += 1
-                print("Welford image: ", count)
-                delta = array.flatten() - mean
-                mean += delta / count
-                # delta2 = array.flatten() - mean
-                # squared_diff += delta * delta2
+                array = array.flatten()
+                count, mean = welford_algo_mean(array, count, mean)
 
             # must do count - 1 for unbiased estimator
             # variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
