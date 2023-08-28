@@ -138,7 +138,6 @@ if __name__ == "__main__":
         # set the count
         count = 0
         # setting up array of zeroes 
-        sum = np.zeros(np.prod(averageRef.GetSize()))
         mean = np.zeros(np.prod(averageRef.GetSize()))
         squared_diff = np.zeros(np.prod(averageRef.GetSize()))
 
@@ -174,8 +173,8 @@ if __name__ == "__main__":
                 # mean += sum / count
 
                 # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
-                print("Welford image: ", count)
                 count += 1
+                print("Welford image: ", count)
                 delta = array.flatten() - mean
                 mean += delta / count
                 delta2 = array.flatten() - mean
@@ -220,9 +219,7 @@ if __name__ == "__main__":
         print(f"Computing output {opts.method}")
     if opts.method == 'mean':
         # average = np.mean(concat_array, axis=0)
-
-        # calculate mean using welford library
-        average = w.mean
+        average = mean
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
