@@ -9,14 +9,14 @@ import time
 
 def welford_algo_mean(array, count, mean): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
-    # print("Welford image: ", count)
+    print("Welford image mean: ", count)
     delta = array - mean
     mean += delta / count
     return count, mean
 
 def welford_algo_var(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
-    # print("Welford image: ", count)
+    print("Welford image variance: ", count)
     delta = array - mean
     mean += delta / count
     delta2 = array - mean
@@ -176,6 +176,7 @@ if __name__ == "__main__":
 
             if opts.normalize: # divide the image values by its mean
                 # concat_array[i,:] = array.flatten()/array.mean()
+                print("normalized")
                 array = array.flatten()/array.mean()
                 if opts.method == "var":
                     count, mean, squared_diff = welford_algo_var(array, count, mean, squared_diff)
@@ -250,6 +251,7 @@ if __name__ == "__main__":
         average = np.std(concat_array, axis=0)
     elif opts.method == 'var':
         # average = np.var(concat_array, axis=0)
+        print("average var")
         average = variance
     elif opts.method == 'and':
         average = np.all(concat_array, axis=0).astype(float)
