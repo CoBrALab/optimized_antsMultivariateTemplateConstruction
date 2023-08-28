@@ -189,9 +189,9 @@ if __name__ == "__main__":
                 else:
                     count, mean = welford_algo_mean(array, count, mean)
 
-            if opts.method == "var":
-                # must do count - 1 for unbiased estimator
-                variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
+        if opts.method == "var":
+            # must do count - 1 for unbiased estimator
+            variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
