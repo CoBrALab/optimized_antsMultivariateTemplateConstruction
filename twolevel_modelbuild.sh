@@ -164,8 +164,10 @@ mkdir -p ${_arg_output_dir}/secondlevel/jobs/${__datetime}
 # Store the full command line for each run
 echo ${__invocation} >${_arg_output_dir}/secondlevel/jobs/${__datetime}/invocation
 
-mkdir -p ${_arg_output_dir}/secondlevel/inputs
+mkdir -p ${_arg_output_dir}/secondlevel/inputs ${_arg_output_dir}/secondlevel/masks
 rm -f ${_arg_output_dir}/secondlevel/input_files.txt
+rm -f ${_arg_output_dir}/secondlevel/mask_files.txt
+
 
 info "Launching modelbuilds for each input row"
 
@@ -177,18 +179,33 @@ while read -r subject_scans; do
   printf "%s\n" ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/input_files.txt
   printf "%s\n" "${scans[@]}" > ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
 
+  if [[ -n ${_arg_masks} ]]; then
+    IFS=',' read -r -a masks <<<$(sed "${i}q;d" ${_arg_masks})
+    ln -sfr ${_arg_output_dir}/firstlevel/subject_${i}/final/average/mask_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/masks/subject_${i}.nii.gz
+    printf "%s\n" ${_arg_output_dir}/secondlevel/masks/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/mask_files.txt
+    printf "%s\n" "${masks[@]}" > ${_arg_output_dir}/firstlevel/subject_${i}/mask_files.txt
+    firstlevel_masks="--masks ${_arg_output_dir}/firstlevel/subject_${i}/mask_files.txt"
+  else
+    firstlevel_masks=""
+  fi
+
+
   if [[ ${#scans[@]} -gt 1 ]]; then
-    debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --jobname-prefix "twolevel_${__datetime}_subject_${i}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
+    debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --jobname-prefix "twolevel_${__datetime}_subject_${i}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${firstlevel_masks} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
     ${__dir}/modelbuild.sh ${_arg_debug:+--debug} \
       --jobname-prefix "twolevel_${__datetime}_subject_${i}_" \
       ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} \
       --output-dir ${_arg_output_dir}/firstlevel/subject_${i} \
+      ${firstlevel_masks} \
       ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
   else
     # Generate Idenity Transforms
     info "Subject ${i} has only a single scan and will not have a subject wise average, it will be included in the second level model build"
     mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}/final/{transforms,resample,average}
     ln -sfr $(realpath ${scans[0]}) ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz
+    if [[ -n ${firstlevel_masks} ]]; then
+      ln -sfr $(realpath ${masks[0]}) ${_arg_output_dir}/firstlevel/subject_${i}/final/average/mask_shapeupdate.nii.gz
+    fi
     ImageMath 3 ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_0GenericAffine.mat MakeAffineTransform 1
     CreateImage 3 ${scans[0]} ${_arg_output_dir}/firstlevel/subject_${i}/final/transforms/$(basename ${scans[0]} | extension_strip)_1Warp.nii.gz 0
     CreateDisplacementField 3 0 \
@@ -202,7 +219,13 @@ while read -r subject_scans; do
   ((++i))
 done < ${_arg_inputs}
 
-debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${__datetime}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt"
-${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${__datetime}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/secondlevel ${_arg_output_dir}/secondlevel/input_files.txt
+if [[ -n ${_arg_masks} ]]; then
+  secondlevel_masks="--masks ${_arg_output_dir}/secondlevel/mask_files.txt"
+else
+  secondlevel_masks=""
+fi
+
+debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${__datetime}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/secondlevel ${secondlevel_masks} ${_arg_output_dir}/secondlevel/input_files.txt"
+${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${__datetime}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/secondlevel ${secondlevel_masks} ${_arg_output_dir}/secondlevel/input_files.txt
 
 # ] <-- needed because of Argbash

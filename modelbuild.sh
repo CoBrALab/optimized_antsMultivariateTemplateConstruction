@@ -32,9 +32,13 @@
 # ARG_TYPE_GROUP_SET([sharptypetype],[SHARPEN],[sharpen-type],[none,laplacian,unsharp])
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
 # ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
+# ARG_OPTIONAL_SINGLE([mask-merge-threshold],[],[Threshold to combine masks during averaging],[0.5])
+
 # ARG_OPTIONAL_SINGLE([stages],[],[Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only','volgenmodel-nlin'), append a number in brackets 'rigid[n]' to override global iteration setting],[rigid,similarity,affine,nlin])
 # ARG_OPTIONAL_BOOLEAN([reuse-affines],[],[Reuse affines from previous stage/iteration to initialize next stage],[off])
 # ARG_OPTIONAL_SINGLE([final-target],[],[Perform a final registration between the average and final target, used in postprocessing],[none])
+# ARG_OPTIONAL_SINGLE([final-target-mask],[],[Mask for the final target used in postprocessing],[none])
+
 # ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:30:00])
 # ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:45:00])
 # ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[4:30:00])
@@ -134,9 +138,11 @@ _arg_rigid_update="off"
 _arg_sharpen_type="unsharp"
 _arg_masks=
 _arg_mask_extract="off"
+_arg_mask_merge_threshold="0.5"
 _arg_stages="rigid,similarity,affine,nlin"
 _arg_reuse_affines="off"
 _arg_final_target="none"
+_arg_final_target_mask="none"
 _arg_walltime_short="00:30:00"
 _arg_walltime_linear="0:45:00"
 _arg_walltime_nonlinear="4:30:00"
@@ -151,7 +157,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text file, one line per input"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -182,9 +188,11 @@ print_help()
   printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
   printf '\t%s\n' "--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)"
+  printf '\t%s\n' "--mask-merge-threshold: Threshold to combine masks during averaging (default: '0.5')"
   printf '\t%s\n' "--stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only','volgenmodel-nlin'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')"
   printf '\t%s\n' "--reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (off by default)"
   printf '\t%s\n' "--final-target: Perform a final registration between the average and final target, used in postprocessing (default: 'none')"
+  printf '\t%s\n' "--final-target-mask: Mask for the final target used in postprocessing (default: 'none')"
   printf '\t%s\n' "--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')"
   printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:45:00')"
   printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')"
@@ -392,6 +400,14 @@ parse_commandline()
         _arg_mask_extract="on"
         test "${1:0:5}" = "--no-" && _arg_mask_extract="off"
         ;;
+      --mask-merge-threshold)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_mask_merge_threshold="$2"
+        shift
+        ;;
+      --mask-merge-threshold=*)
+        _arg_mask_merge_threshold="${_key##--mask-merge-threshold=}"
+        ;;
       --stages)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
         _arg_stages="$2"
@@ -411,6 +427,14 @@ parse_commandline()
         ;;
       --final-target=*)
         _arg_final_target="${_key##--final-target=}"
+        ;;
+      --final-target-mask)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_final_target_mask="$2"
+        shift
+        ;;
+      --final-target-mask=*)
+        _arg_final_target_mask="${_key##--final-target-mask=}"
         ;;
       --walltime-short)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
@@ -648,7 +672,7 @@ fi
 for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
   ThresholdImage ExtractRegionFromImageByMask antsAI ConvertImage \
   antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
-  antsRegistration_affine_SyN.sh; do
+  antsRegistration_affine_SyN.sh parallel; do
 
   if ! command -v ${program} &>/dev/null; then
     failure "Required program ${program} not found!"
@@ -1067,7 +1091,7 @@ for reg_type in "${_arg_stages[@]}"; do
               done) >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
 
             echo ThresholdImage 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz \
-              ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0.25 Inf 1 0 \
+              ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz ${_arg_mask_merge_threshold} Inf 1 0 \
               >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
           fi
           target_mask=${_arg_output_dir}/${reg_type}/${i}/average/mask_shapeupdate.nii.gz
@@ -1307,6 +1331,18 @@ if [[ -s ${_arg_final_target} ]]; then
   if [[ ! -s ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz ]]; then
     echo ConvertImage 3 ${_arg_final_target} ${_arg_output_dir}/final-target/final_target.nii.gz \
         > ${_arg_output_dir}/jobs/${__datetime}/final_target
+    if [[ -n ${_arg_final_target_mask} ]]; then
+      echo ConvertImage 3 ${_arg_final_target_mask} ${_arg_output_dir}/final-target/final_target_mask.nii.gz \
+          >> ${_arg_output_dir}/jobs/${__datetime}/final_target
+      _arg_final_target_mask="--fixed-mask ${_arg_output_dir}/final-target/final_target_mask.nii.gz"
+    else
+      _arg_final_target_mask=""
+    fi
+    if [[ -n ${target_mask} ]]; then
+      target_mask="--moving-mask ${target_mask}"
+    else
+      target_mask=""
+    fi
     echo antsRegistration_affine_SyN.sh \
       ${_arg_float} ${_arg_fast} \
       ${_arg_linear_convergence} \
@@ -1315,6 +1351,8 @@ if [[ -s ${_arg_final_target} ]]; then
       ${_arg_syn_convergence} \
       ${_arg_syn_shrink_factors} \
       ${_arg_syn_smoothing_sigmas} \
+      ${_arg_final_target_mask} \
+      ${target_mask} \
       ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
       ${_arg_output_dir}/final-target/final_target.nii.gz \
       ${_arg_output_dir}/final-target/to_target_ \
