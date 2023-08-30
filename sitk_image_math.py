@@ -16,7 +16,7 @@ def welford_algo_mean(array, count, mean): # pseudocode for welford algo (https:
 
 def welford_algo_var(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
-    print("Welford image variance: ", count)
+    # print("Welford image variance: ", count)
     delta = array - mean
     mean += delta / count
     delta2 = array - mean
