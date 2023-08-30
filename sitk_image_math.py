@@ -176,20 +176,25 @@ if __name__ == "__main__":
 
             if opts.normalize: # divide the image values by its mean
                 # concat_array[i,:] = array.flatten()/array.mean()
-                print("normalized")
+                # print("normalized")
                 array = array.flatten()/array.mean()
+                # check to see if we are calculating variance
                 if opts.method == "var":
                     count, mean, squared_diff = welford_algo_var(array, count, mean, squared_diff)
+                # calculate mean
                 else:
                     count, mean = welford_algo_mean(array, count, mean)
             else:
                 # concat_array[i,:] = array.flatten()
                 array = array.flatten()
+                # check to see if we are calculating variance
                 if opts.method == "var":
                     count, mean, squared_diff = welford_algo_var(array, count, mean, squared_diff)
+                # calculate mean
                 else:
                     count, mean = welford_algo_mean(array, count, mean)
 
+        # Calculate the final variance 
         if opts.method == "var":
             # must do count - 1 for unbiased estimator
             variance = squared_diff / (count - 1) # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
