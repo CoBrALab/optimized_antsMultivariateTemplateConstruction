@@ -9,7 +9,7 @@ import time
 
 def welford_algo_mean(array, count, mean): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
-    print("Welford image mean: ", count)
+    # print("Welford image mean: ", count)
     delta = array - mean
     mean += delta / count
     return count, mean
