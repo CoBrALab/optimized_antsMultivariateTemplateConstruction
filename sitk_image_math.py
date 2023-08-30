@@ -175,7 +175,7 @@ if __name__ == "__main__":
             array = sitk.GetArrayViewFromImage(img)
 
             if opts.normalize: # divide the image values by its mean
-                # concat_array[i,:] = array.flatten()/array.mean()
+                # concat_array[i,:] = array.flatten()/array.mean() # Gabe code
                 # print("normalized")
                 array = array.flatten()/array.mean()
                 # check to see if we are calculating variance
@@ -185,7 +185,7 @@ if __name__ == "__main__":
                 else:
                     count, mean = welford_algo_mean(array, count, mean)
             else:
-                # concat_array[i,:] = array.flatten()
+                # concat_array[i,:] = array.flatten() # Gabe code
                 array = array.flatten()
                 # check to see if we are calculating variance
                 if opts.method == "var":
