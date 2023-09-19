@@ -105,9 +105,9 @@ properly find the rest of its dependent scripts.
 Example help, always check `./modelbuild.sh --help` in case this document has not
 been updated
 
-```
+```bash
 A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
-Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text file, one line per input
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
@@ -121,6 +121,7 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)
         --syn-smoothing-sigmas: Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)
         --syn-convergence: Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)
+        --syn-control: Non-linear (SyN) gradient and regularization parameters, not checked for correctness (default: '0.1,3,0')
         --linear-shrink-factors: Shrink factors for linear stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)
         --linear-smoothing-sigmas: Smoothing sigmas for linear stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)
         --linear-convergence: Convergence levels for linear stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)
@@ -137,9 +138,11 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')
         --masks: File containing mask filenames, one file per line (no default)
         --mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)
+        --mask-merge-threshold: Threshold to combine masks during averaging (default: '0.5')
         --stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only','volgenmodel-nlin'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')
         --reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (off by default)
         --final-target: Perform a final registration between the average and final target, used in postprocessing (default: 'none')
+        --final-target-mask: Mask for the final target used in postprocessing (default: 'none')
         --walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')
         --walltime-linear: Walltime for linear registration stages (default: '0:45:00')
         --walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')
