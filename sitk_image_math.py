@@ -4,7 +4,7 @@ import os
 import numpy as np
 import SimpleITK as sitk
 
-def welford_algo(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+def welford_method(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
     delta = array - mean
     mean += delta / count
@@ -159,11 +159,17 @@ if __name__ == "__main__":
                 )
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                array = array.flatten()/array.mean()
-                count, mean, squared_diff = welford_algo(array, count, mean, squared_diff)
+                if opts.method == 'mean' or opts.method == 'var':
+                    array = array.flatten()/array.mean()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array[i,:] = array.flatten()/array.mean()
             else:
-                array = array.flatten()
-                count, mean, squared_diff = welford_algo(array, count, mean, squared_diff)
+                if opts.method == 'mean' or opts.method == 'var':
+                    array = array.flatten()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array[i,:] = array.flatten()
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
@@ -199,7 +205,7 @@ if __name__ == "__main__":
 
     if opts.verbose:
         print(f"Computing output {opts.method}")
-    if opts.method == 'mean':
+    if opts.method == 'mean' or opts.method == 'var':
         average = mean
         # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
         variance = squared_diff / (count - 1) 
