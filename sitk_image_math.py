@@ -201,6 +201,8 @@ if __name__ == "__main__":
         print(f"Computing output {opts.method}")
     if opts.method == 'mean':
         average = mean
+        # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
+        variance = squared_diff / (count - 1) 
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
@@ -219,8 +221,6 @@ if __name__ == "__main__":
         average = np.sum(concat_array, axis=0)
     elif opts.method == 'std':
         average = np.std(concat_array, axis=0)
-    elif opts.method == 'var':
-        average = squared_diff / (count - 1)
     elif opts.method == 'and':
         average = np.all(concat_array, axis=0).astype(float)
     elif opts.method == 'or':
@@ -234,6 +234,13 @@ if __name__ == "__main__":
         average_img = sitk.GetImageFromArray(average, isVector=False)
         average_img.CopyInformation(averageRef)
         sitk.WriteImage(average_img, opts.output)
+        average = variance.reshape(shape)
+        average_img = sitk.GetImageFromArray(average, isVector=False)
+        average_img.CopyInformation(averageRef)
+        # get the file name for opts.output and add "_var" to the name
+        split_file_path = opts.output.split(".nii.gz")
+        file_name = split_file_path[0] + '_var.nii.gz'
+        sitk.WriteImage(average_img, file_name)
     elif image_type=='warp':
         average_img = sitk.GetImageFromArray(average, isVector=True)
         average_img.CopyInformation(inputRefImage)
