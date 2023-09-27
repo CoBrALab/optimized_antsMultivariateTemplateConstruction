@@ -4,6 +4,8 @@ import os
 import numpy as np
 import SimpleITK as sitk
 
+file_extensions = ['.hdf5', '.mnc', '.nii', '.nii.gz', '.nrrd']
+
 def welford_method(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
     delta = array - mean
@@ -240,13 +242,17 @@ if __name__ == "__main__":
         average_img = sitk.GetImageFromArray(average, isVector=False)
         average_img.CopyInformation(averageRef)
         sitk.WriteImage(average_img, opts.output)
-        average = variance.reshape(shape)
-        average_img = sitk.GetImageFromArray(average, isVector=False)
-        average_img.CopyInformation(averageRef)
-        # get the file name for opts.output and add "_var" to the name
-        split_file_path = opts.output.split(".nii.gz")
-        file_name = split_file_path[0] + '_var.nii.gz'
-        sitk.WriteImage(average_img, file_name)
+        if opts.method == 'mean' or opts.method == 'var':
+            average = variance.reshape(shape)
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(averageRef)
+            # check what type of file exntension the user provided
+            file_extension = [ext for ext in file_extensions if opts.output.endswith(ext)][0]
+            # split based on the extension type and add "_var" to the name
+            split_file_path = opts.output.split(file_extension)
+            file_name = split_file_path[0] + '_var' + file_extension
+            print(file_extension)
+            sitk.WriteImage(average_img, file_name)
     elif image_type=='warp':
         average_img = sitk.GetImageFromArray(average, isVector=True)
         average_img.CopyInformation(inputRefImage)
