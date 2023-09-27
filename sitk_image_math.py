@@ -4,6 +4,13 @@ import os
 import numpy as np
 import SimpleITK as sitk
 
+def welford_algo(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+    count += 1
+    delta = array - mean
+    mean += delta / count
+    delta2 = array - mean
+    squared_diff += delta * delta2
+    return count, mean, squared_diff
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -129,6 +136,12 @@ if __name__ == "__main__":
         concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
         shape = averageRef.GetSize()[::-1]
 
+        # welford algo setup
+        count = 0
+        # setting up array of zeroes 
+        mean = np.zeros(np.prod(averageRef.GetSize()))
+        squared_diff = np.zeros(np.prod(averageRef.GetSize()))
+
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
@@ -146,9 +159,11 @@ if __name__ == "__main__":
                 )
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array[i,:] = array.flatten()/array.mean()
+                array = array.flatten()/array.mean()
+                count, mean, squared_diff = welford_algo(array, count, mean, squared_diff)
             else:
-                concat_array[i,:] = array.flatten()
+                array = array.flatten()
+                count, mean, squared_diff = welford_algo(array, count, mean, squared_diff)
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
@@ -185,7 +200,7 @@ if __name__ == "__main__":
     if opts.verbose:
         print(f"Computing output {opts.method}")
     if opts.method == 'mean':
-        average = np.mean(concat_array, axis=0)
+        average = mean
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
@@ -205,7 +220,7 @@ if __name__ == "__main__":
     elif opts.method == 'std':
         average = np.std(concat_array, axis=0)
     elif opts.method == 'var':
-        average = np.var(concat_array, axis=0)
+        average = squared_diff / (count - 1)
     elif opts.method == 'and':
         average = np.all(concat_array, axis=0).astype(float)
     elif opts.method == 'or':
