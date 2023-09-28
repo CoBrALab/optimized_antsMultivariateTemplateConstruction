@@ -4,7 +4,7 @@ import os
 import numpy as np
 import SimpleITK as sitk
 
-file_extensions = ['.hdf5', '.mnc', '.nii', '.nii.gz', '.nrrd']
+file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
 
 def welford_method(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
     count += 1
