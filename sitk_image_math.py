@@ -247,11 +247,10 @@ if __name__ == "__main__":
             average_img = sitk.GetImageFromArray(average, isVector=False)
             average_img.CopyInformation(averageRef)
             # check what type of file exntension the user provided
-            file_extension = [ext for ext in file_extensions if opts.output.endswith(ext)][0]
-            # split based on the extension type and add "_var" to the name
-            split_file_path = opts.output.split(file_extension)
-            file_name = split_file_path[0] + '_var' + file_extension
-            print(file_extension)
+            file_extension = [
+                ext for ext in file_extensions if opts.output.endswith(ext)][0]
+            # split based on the extension type and add "_var" or "_mean" to the name
+            split_file_path = opts.output.rsplit(file_extension, 1)
             sitk.WriteImage(average_img, file_name)
     elif image_type=='warp':
         average_img = sitk.GetImageFromArray(average, isVector=True)
