@@ -251,6 +251,12 @@ if __name__ == "__main__":
                 ext for ext in file_extensions if opts.output.endswith(ext)][0]
             # split based on the extension type and add "_var" or "_mean" to the name
             split_file_path = opts.output.rsplit(file_extension, 1)
+            # if mean was chosen the alternate should be '_var'
+            if opts.method == 'mean':
+                file_name = split_file_path[0] + '_var' + file_extension
+            # else if var was chosen the alternate should be '_mean"
+            if opts.method == 'var':
+                file_name = split_file_path[0] + '_mean' + file_extension
             sitk.WriteImage(average_img, file_name)
     elif image_type=='warp':
         average_img = sitk.GetImageFromArray(average, isVector=True)
