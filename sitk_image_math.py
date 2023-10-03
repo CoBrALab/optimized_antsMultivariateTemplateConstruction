@@ -6,12 +6,37 @@ import SimpleITK as sitk
 
 file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
 
-def welford_method(array, count, mean, squared_diff): # pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+def welford_method(array, count, mean, squared_diff):
+    """
+    The welford_method function implements Welford's online algorithm for computing the mean and variance of a
+    numpy array in a single pass. The algorithm is based on the idea of updating the mean and variance 
+    incrementally as new elements are added to the array. This is useful when dealing with large datasets that cannot
+    be loaded into memory all at once.
+
+    Pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+
+    Args:
+    - array: numpy array of numbers
+    - count: number of elements in the array processed so far
+    - mean: current mean of the array
+    - squared_diff: sum of squared differences from the mean
+
+    Returns:
+    - count: updated count
+    - mean: updated mean
+    - squared_diff: updated sum of squared differences from the mean
+    """
+    # Increment the count to account for the new element being added to the array
     count += 1
+    # Calculate the difference between the new element and the current mean
     delta = array - mean
+    # Update the mean by adding the delta divided by the count
     mean += delta / count
+    # Calculate the difference between the new element and the updated mean
     delta2 = array - mean
+    # Update the squared_diff variable by adding the product of delta and delta2
     squared_diff += delta * delta2
+    # Return the updated count, mean, and squared_diff variables
     return count, mean, squared_diff
 
 if __name__ == "__main__":
