@@ -53,6 +53,17 @@ def unbiased_std(n, var):
     c_4 = 1 - (1 / (4 * (n))) - (7 / (32 * (n**2))) - (19 / (128 * (n**3)))
     return var / c_4
 
+def get_file_extension(file_name, method_type: str):
+    file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
+    # check what type of file exntension the user provided
+    file_extension = [
+        ext for ext in file_extensions if file_name.endswith(ext)][0]
+    # split based on the extension type
+    split_file_path = file_name.rsplit(file_extension, 1)
+    # add the method_type to the name
+    file_name = split_file_path[0] + method_type + file_extension
+    return file_name    
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-o", "--output", type=str,
