@@ -259,8 +259,12 @@ if __name__ == "__main__":
         print(f"Computing output {opts.method}")
     if opts.method in mean_var_std_list:
         average = mean
+        # calculating variance
         # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
-        variance = squared_diff / (count - 1) 
+        output = squared_diff / (count - 1) 
+        if opts.method == 'std':
+            # calculating standard deviation from variance
+            output = unbiased_std(count, output)
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
@@ -277,8 +281,6 @@ if __name__ == "__main__":
         average = sm.robust.scale.mad(concat_array)
     elif opts.method == 'sum':
         average = np.sum(concat_array, axis=0)
-    elif opts.method == 'std':
-        average = np.std(concat_array, axis=0)
     elif opts.method == 'and':
         average = np.all(concat_array, axis=0).astype(float)
     elif opts.method == 'or':
@@ -289,25 +291,35 @@ if __name__ == "__main__":
     average = average.reshape(shape)
 
     if image_type=='image':
-        average_img = sitk.GetImageFromArray(average, isVector=False)
-        average_img.CopyInformation(averageRef)
-        sitk.WriteImage(average_img, opts.output)
-        if opts.method == 'mean' or opts.method == 'var':
-            average = variance.reshape(shape)
+        if opts.method in ['var', 'std']:
+            # save the var or std image
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, opts.output)
+            # create the new file name for the mean image
+            concat_file_name = get_file_extension(opts.output, '_mean')
+            # save the mean image
             average_img = sitk.GetImageFromArray(average, isVector=False)
             average_img.CopyInformation(averageRef)
-            # check what type of file exntension the user provided
-            file_extension = [
-                ext for ext in file_extensions if opts.output.endswith(ext)][0]
-            # split based on the extension type and add "_var" or "_mean" to the name
-            split_file_path = opts.output.rsplit(file_extension, 1)
-            # if mean was chosen the alternate should be '_var'
-            if opts.method == 'mean':
-                file_name = split_file_path[0] + '_var' + file_extension
-            # else if var was chosen the alternate should be '_mean"
-            if opts.method == 'var':
-                file_name = split_file_path[0] + '_mean' + file_extension
-            sitk.WriteImage(average_img, file_name)
+            sitk.WriteImage(average_img, concat_file_name)
+        elif opts.method == 'mean':
+            # save the mean image
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, opts.output)
+            # create the new file name for the var image
+            concat_file_name = get_file_extension(opts.output, '_var')
+            # save the var image
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, concat_file_name)
+        else:
+            # if not mean, var or std, save the other method image
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, opts.method)            
     elif image_type=='warp':
         average_img = sitk.GetImageFromArray(average, isVector=True)
         average_img.CopyInformation(inputRefImage)
