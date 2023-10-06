@@ -4,6 +4,65 @@ import os
 import numpy as np
 import SimpleITK as sitk
 
+mean_var_std_list = ['mean', 'var', 'std']
+
+def welford_method(array, count, mean, squared_diff):
+    """
+    The welford_method function implements Welford's online algorithm for computing the mean and variance of a
+    numpy array in a single pass. The algorithm is based on the idea of updating the mean and variance 
+    incrementally as new elements are added to the array. This is useful when dealing with large datasets that cannot
+    be loaded into memory all at once.
+
+    Pseudocode for welford algo (https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/)
+
+    Args:
+    - array: numpy array of numbers
+    - count: number of elements in the array processed so far
+    - mean: current mean of the array
+    - squared_diff: sum of squared differences from the mean
+
+    Returns:
+    - count: updated count
+    - mean: updated mean
+    - squared_diff: updated sum of squared differences from the mean
+    """
+    # Increment the count to account for the new element being added to the array
+    count += 1
+    # Calculate the difference between the new element and the current mean
+    delta = array - mean
+    # Update the mean by adding the delta divided by the count
+    mean += delta / count
+    # Calculate the difference between the new element and the updated mean
+    delta2 = array - mean
+    # Update the squared_diff variable by adding the product of delta and delta2
+    squared_diff += delta * delta2
+    # Return the updated count, mean, and squared_diff variables
+    return count, mean, squared_diff
+
+def unbiased_std(n, var):
+    """
+    Computes the unbiased estimate of the population standard deviation given the sample size and variance.
+    Reference: https://en.wikipedia.org/wiki/Unbiased_estimation_of_standard_deviation
+    Args:
+    - n: sample size
+    - var: sample variance
+
+    Returns:
+    - unbiased estimate of the population standard deviation
+    """
+    c_4 = 1 - (1 / (4 * (n))) - (7 / (32 * (n**2))) - (19 / (128 * (n**3)))
+    return var / c_4
+
+def get_file_extension(file_name, method_type: str):
+    file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
+    # check what type of file exntension the user provided
+    file_extension = [
+        ext for ext in file_extensions if file_name.endswith(ext)][0]
+    # split based on the extension type
+    split_file_path = file_name.rsplit(file_extension, 1)
+    # add the method_type to the name
+    file_name = split_file_path[0] + method_type + file_extension
+    return file_name    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -129,6 +188,12 @@ if __name__ == "__main__":
         concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
         shape = averageRef.GetSize()[::-1]
 
+        # welford algo setup
+        count = 0
+        # setting up array of zeroes 
+        mean = np.zeros(np.prod(averageRef.GetSize()))
+        squared_diff = np.zeros(np.prod(averageRef.GetSize()))
+
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
@@ -146,9 +211,17 @@ if __name__ == "__main__":
                 )
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array[i,:] = array.flatten()/array.mean()
+                if opts.method in mean_var_std_list:
+                    array = array.flatten()/array.mean()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array[i,:] = array.flatten()/array.mean()
             else:
-                concat_array[i,:] = array.flatten()
+                if opts.method in mean_var_std_list:
+                    array = array.flatten()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array[i,:] = array.flatten()
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
@@ -184,8 +257,14 @@ if __name__ == "__main__":
 
     if opts.verbose:
         print(f"Computing output {opts.method}")
-    if opts.method == 'mean':
-        average = np.mean(concat_array, axis=0)
+    if opts.method in mean_var_std_list:
+        average = mean
+        # calculating variance
+        # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
+        output = squared_diff / (count - 1) 
+        if opts.method == 'std':
+            # calculating standard deviation from variance
+            output = unbiased_std(count, output)
     elif opts.method == 'median':
         average = np.median(concat_array, axis=0)
     elif opts.method == 'trimmed_mean':
@@ -202,10 +281,6 @@ if __name__ == "__main__":
         average = sm.robust.scale.mad(concat_array)
     elif opts.method == 'sum':
         average = np.sum(concat_array, axis=0)
-    elif opts.method == 'std':
-        average = np.std(concat_array, axis=0)
-    elif opts.method == 'var':
-        average = np.var(concat_array, axis=0)
     elif opts.method == 'and':
         average = np.all(concat_array, axis=0).astype(float)
     elif opts.method == 'or':
@@ -216,9 +291,35 @@ if __name__ == "__main__":
     average = average.reshape(shape)
 
     if image_type=='image':
-        average_img = sitk.GetImageFromArray(average, isVector=False)
-        average_img.CopyInformation(averageRef)
-        sitk.WriteImage(average_img, opts.output)
+        if opts.method in ['var', 'std']:
+            # save the var or std image
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, opts.output)
+            # create the new file name for the mean image
+            concat_file_name = get_file_extension(opts.output, '_mean')
+            # save the mean image
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, concat_file_name)
+        elif opts.method == 'mean':
+            # save the mean image
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, opts.output)
+            # create the new file name for the var image
+            concat_file_name = get_file_extension(opts.output, '_var')
+            # save the var image
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, concat_file_name)
+        else:
+            # if not mean, var or std, save the other method image
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(averageRef)
+            sitk.WriteImage(average_img, opts.method)            
     elif image_type=='warp':
         average_img = sitk.GetImageFromArray(average, isVector=True)
         average_img.CopyInformation(inputRefImage)
