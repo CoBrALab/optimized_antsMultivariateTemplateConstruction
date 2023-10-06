@@ -4,7 +4,7 @@ import os
 import numpy as np
 import SimpleITK as sitk
 
-file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
+mean_var_std_list = ['mean', 'var', 'std']
 
 def welford_method(array, count, mean, squared_diff):
     """
@@ -211,13 +211,13 @@ if __name__ == "__main__":
                 )
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                if opts.method == 'mean' or opts.method == 'var':
+                if opts.method in mean_var_std_list:
                     array = array.flatten()/array.mean()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
                     concat_array[i,:] = array.flatten()/array.mean()
             else:
-                if opts.method == 'mean' or opts.method == 'var':
+                if opts.method in mean_var_std_list:
                     array = array.flatten()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
     if opts.verbose:
         print(f"Computing output {opts.method}")
-    if opts.method == 'mean' or opts.method == 'var':
+    if opts.method in mean_var_std_list:
         average = mean
         # count - 1 is Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
         variance = squared_diff / (count - 1) 
