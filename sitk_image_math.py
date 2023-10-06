@@ -252,7 +252,6 @@ if __name__ == "__main__":
 
     elif image_type == 'warp':
         # Assume all warp fields are in the same space
-        concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
         shape = sitk.GetArrayViewFromImage(inputRefImage).shape
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
@@ -262,9 +261,19 @@ if __name__ == "__main__":
             img = sitk.ReadImage(file)
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array[i,:] = array.flatten()/array.mean()
+                if opts.method in mean_var_std_list:
+                    array = array.flatten()/array.mean()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
+                    concat_array[i,:] = array.flatten()/array.mean()
             else:
-                concat_array[i,:] = array.flatten()
+                if opts.method in mean_var_std_list:
+                    array = array.flatten()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
+                    concat_array[i,:] = array.flatten()
 
     if opts.verbose:
         print(f"Computing output {opts.method}")
