@@ -39,6 +39,20 @@ def welford_method(array, count, mean, squared_diff):
     # Return the updated count, mean, and squared_diff variables
     return count, mean, squared_diff
 
+def unbiased_std(n, var):
+    """
+    Computes the unbiased estimate of the population standard deviation given the sample size and variance.
+    Reference: https://en.wikipedia.org/wiki/Unbiased_estimation_of_standard_deviation
+    Args:
+    - n: sample size
+    - var: sample variance
+
+    Returns:
+    - unbiased estimate of the population standard deviation
+    """
+    c_4 = 1 - (1 / (4 * (n))) - (7 / (32 * (n**2))) - (19 / (128 * (n**3)))
+    return var / c_4
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-o", "--output", type=str,
