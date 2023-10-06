@@ -183,9 +183,7 @@ if __name__ == "__main__":
         else:
             averageRef = inputRefImage
 
-        # Create empty array to stick data in
         # Need to reverse the dimension order b/c numpy and ITK are backwards
-        concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
         shape = averageRef.GetSize()[::-1]
 
         # welford algo setup
@@ -215,12 +213,16 @@ if __name__ == "__main__":
                     array = array.flatten()/array.mean()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
+                    # Create empty array to stick data in
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
                     concat_array[i,:] = array.flatten()/array.mean()
             else:
                 if opts.method in mean_var_std_list:
                     array = array.flatten()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
+                    # Create empty array to stick data in
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
                     concat_array[i,:] = array.flatten()
 
     elif image_type == 'timeseries':
