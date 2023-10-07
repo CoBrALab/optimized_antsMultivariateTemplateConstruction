@@ -237,14 +237,14 @@ if __name__ == "__main__":
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
                 if opts.method in mean_var_std_list:
-                    array = array.flatten()/array.mean()
+                    array = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
                     concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
                     concat_array[i,:] = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
             else:
                 if opts.method in mean_var_std_list:
-                    array = array.flatten()
+                    array = array.reshape(array.shape[0], -1)
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
                     concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
