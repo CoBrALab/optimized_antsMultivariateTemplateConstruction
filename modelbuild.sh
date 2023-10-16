@@ -2,9 +2,8 @@
 # ARG_HELP([A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping, can be a comma separated list same length as number of iterations],[0.25])
-# ARG_OPTIONAL_SINGLE([starting-target],[],[Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target],[none])
-# ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target],[])
-# ARG_OPTIONAL_BOOLEAN([com-initialize],[],[When a starting target is not provided, align all inputs using their center-of-mass before averaging],[on])
+# ARG_OPTIONAL_SINGLE([starting-target],[],[Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path)],[first])
+# ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target if a file],[])
 # ARG_OPTIONAL_SINGLE([starting-average-resolution],[],[If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild],[])
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[4])
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
@@ -113,9 +112,8 @@ _arg_inputs=('' )
 # THE DEFAULTS INITIALIZATION - OPTIONALS
 _arg_output_dir="output"
 _arg_gradient_step="0.25"
-_arg_starting_target="none"
+_arg_starting_target="first"
 _arg_starting_target_mask=
-_arg_com_initialize="on"
 _arg_starting_average_resolution=
 _arg_iterations="4"
 _arg_convergence="1e-7"
@@ -157,14 +155,13 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--(no-)com-initialize] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text file, one line per input"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
   printf '\t%s\n' "--gradient-step: Gradient scaling step during template warping, can be a comma separated list same length as number of iterations (default: '0.25')"
-  printf '\t%s\n' "--starting-target: Initial image used to start modelbuild, defines orientation and voxel space, if 'none' an average of all subjects is constructed as a starting target (default: 'none')"
-  printf '\t%s\n' "--starting-target-mask: Mask for starting target (no default)"
-  printf '\t%s\n' "--com-initialize, --no-com-initialize: When a starting target is not provided, align all inputs using their center-of-mass before averaging (on by default)"
+  printf '\t%s\n' "--starting-target: Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path) (default: 'first')"
+  printf '\t%s\n' "--starting-target-mask: Mask for starting target if a file (no default)"
   printf '\t%s\n' "--starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild (no default)"
   printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '4')"
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
@@ -251,10 +248,6 @@ parse_commandline()
         ;;
       --starting-target-mask=*)
         _arg_starting_target_mask="${_key##--starting-target-mask=}"
-        ;;
-      --no-com-initialize|--com-initialize)
-        _arg_com_initialize="on"
-        test "${1:0:5}" = "--no-" && _arg_com_initialize="off"
         ;;
       --starting-average-resolution)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
@@ -735,10 +728,10 @@ average_images () {
 }
 
 # If no starting target is supplied, create one
-if [[ ${_arg_starting_target} == "none" ]]; then
+if [[ ! -s ${_arg_starting_target} ]]; then
   if [[ ! -s ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ]]; then
     mkdir -p ${_arg_output_dir}/initialaverage
-    if [[ ${_arg_com_initialize} == "off" ]]; then
+    if [[ ${_arg_starting_target} == "dumb" ]]; then
       info "Generating initial average of all subjects using ${_arg_average_type} method"
       average_images ${_arg_output_dir}/initialaverage/initialtarget.nii.gz "${_arg_inputs[@]}" \
         >${_arg_output_dir}/jobs/${__datetime}/initialaverage
@@ -762,7 +755,7 @@ if [[ ${_arg_starting_target} == "none" ]]; then
 
       last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage"
 
-    else
+    elif [[ ${_arg_starting_target} == "com" ]]; then
       info "Generating initial average of all subjects using ${_arg_average_type} and center-of-mass alignment"
       # Bootstrap COM alignment with a normalized mean
       echo AverageImages 3 ${_arg_output_dir}/initialaverage/initialtarget_dumb.nii.gz 2 \
@@ -863,6 +856,12 @@ if [[ ${_arg_starting_target} == "none" ]]; then
       fi
 
       last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_com"
+    elif [[ ${_arg_starting_target} == "first" ]]; then
+      info "Using the first input image "${_arg_inputs[0]}" as initalization target"
+      cp -f ${_arg_inputs[0]} ${_arg_output_dir}/initialaverage/initialtarget.nii.gz
+      last_round_job=""
+    else
+      error "Starting target setting ${_arg_starting_target} unknown"
     fi
   else
     last_round_job=""
@@ -870,11 +869,15 @@ if [[ ${_arg_starting_target} == "none" ]]; then
   ln -srf ${_arg_output_dir}/initialaverage/initialtarget.nii.gz ${_arg_output_dir}/initialtarget.nii.gz
   target=${_arg_output_dir}/initialtarget.nii.gz
 else
-  info "Checking starting target"
-  if [[ ! -s ${_arg_starting_target} ]]; then
-    failure "Starting target ${_arg_starting_target} is non-existant or zero size"
+  if [[ ${_arg_skip_file_checks} == "on" ]]; then
+    ln -srf ${_arg_starting_target} ${_arg_output_dir}/initialtarget.nii.gz
+  else
+    info "Checking starting target"
+    if [[ ! -s ${_arg_starting_target} ]]; then
+      failure "Starting target ${_arg_starting_target} is non-existant or zero size"
+    fi
+    cp -f ${_arg_starting_target} ${_arg_output_dir}/initialtarget.nii.gz
   fi
-  cp -f ${_arg_starting_target} ${_arg_output_dir}/initialtarget.nii.gz
   target=${_arg_output_dir}/initialtarget.nii.gz
   last_round_job=""
 fi
