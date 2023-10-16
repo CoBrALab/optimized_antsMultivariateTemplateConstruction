@@ -1169,7 +1169,7 @@ for reg_type in "${_arg_stages[@]}"; do
             ${_arg_output_dir}/${reg_type}/${i}/average/nonzero.nii.gz \
             >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
-          if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ && ${_arg_affine_shape_update} == "on" ]]; then
+          if [[ ( ${reg_type} != "nlin-only" || ${reg_type} =~ ^volgenmodel.* ) && ${_arg_affine_shape_update} == "on" ]]; then
             # Average all the affine transforms
             if [[ ${_arg_average_prog} == "ANTs" ]]; then
               if [[ ${_arg_rigid_update} == "on" ]]; then
