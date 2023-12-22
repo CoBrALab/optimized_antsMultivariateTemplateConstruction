@@ -4,6 +4,8 @@
 # ARG_HELP([A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, identical to inputs in structure],[])
+# ARG_OPTIONAL_SINGLE([firstlevel-starting-target],[],[Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path)],[first])
+# ARG_OPTIONAL_SINGLE([secondlevel-starting-target],[],[Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path)],[first])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per subject, comma separated scans per subject],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
@@ -38,6 +40,8 @@ _arg_leftovers=()
 # THE DEFAULTS INITIALIZATION - OPTIONALS
 _arg_output_dir="output"
 _arg_masks=
+_arg_firstlevel_starting_target="first"
+_arg_secondlevel_starting_target="first"
 _arg_debug="off"
 _arg_dry_run="off"
 
@@ -45,12 +49,14 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--masks <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--masks <arg>] [--firstlevel-starting-target <arg>] [--secondlevel-starting-target <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per subject, comma separated scans per subject"
   printf '\t%s\n' "... : Arguments to be passed to modelbuild.sh without validation"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
   printf '\t%s\n' "--masks: File containing mask filenames, identical to inputs in structure (no default)"
+  printf '\t%s\n' "--firstlevel-starting-target: Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path) (default: 'first')"
+  printf '\t%s\n' "--secondlevel-starting-target: Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path) (default: 'first')"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
@@ -86,6 +92,22 @@ parse_commandline()
         ;;
       --masks=*)
         _arg_masks="${_key##--masks=}"
+        ;;
+      --firstlevel-starting-target)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_firstlevel_starting_target="$2"
+        shift
+        ;;
+      --firstlevel-starting-target=*)
+        _arg_firstlevel_starting_target="${_key##--firstlevel-starting-target=}"
+        ;;
+      --secondlevel-starting-target)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_secondlevel_starting_target="$2"
+        shift
+        ;;
+      --secondlevel-starting-target=*)
+        _arg_secondlevel_starting_target="${_key##--secondlevel-starting-target=}"
         ;;
       --no-debug|--debug)
         _arg_debug="on"
@@ -196,6 +218,7 @@ while read -r subject_scans; do
       --jobname-prefix "twolevel_${__datetime}_subject_${i}_" \
       ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} \
       --output-dir ${_arg_output_dir}/firstlevel/subject_${i} \
+      --starting-target ${_arg_firstlevel_starting_target} \
       ${firstlevel_masks} \
       ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
   else
@@ -226,6 +249,13 @@ else
 fi
 
 debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${__datetime}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/secondlevel ${secondlevel_masks} ${_arg_output_dir}/secondlevel/input_files.txt"
-${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${__datetime}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/secondlevel ${secondlevel_masks} ${_arg_output_dir}/secondlevel/input_files.txt
+${__dir}/modelbuild.sh ${_arg_debug:+--debug} \
+  --skip-file-checks \
+  --job-predepend "twolevel_${__datetime}_" \
+  ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} \
+  --output-dir ${_arg_output_dir}/secondlevel \
+  --starting-target ${_arg_secondlevel_starting_target} \
+  ${secondlevel_masks} \
+  ${_arg_output_dir}/secondlevel/input_files.txt
 
 # ] <-- needed because of Argbash
