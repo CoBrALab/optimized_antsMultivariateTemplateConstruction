@@ -183,9 +183,7 @@ if __name__ == "__main__":
         else:
             averageRef = inputRefImage
 
-        # Create empty array to stick data in
         # Need to reverse the dimension order b/c numpy and ITK are backwards
-        concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
         shape = averageRef.GetSize()[::-1]
 
         # welford algo setup
@@ -215,17 +213,20 @@ if __name__ == "__main__":
                     array = array.flatten()/array.mean()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
+                    # Create empty array to stick data in
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
                     concat_array[i,:] = array.flatten()/array.mean()
             else:
                 if opts.method in mean_var_std_list:
                     array = array.flatten()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
+                    # Create empty array to stick data in
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(averageRef.GetSize())])
                     concat_array[i,:] = array.flatten()
 
     elif image_type == 'timeseries':
         # Assume all timeseries inputs are in the same space
-        concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
         shape = sitk.GetArrayViewFromImage(inputRefImage).shape[1:]
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
@@ -235,13 +236,22 @@ if __name__ == "__main__":
             img = sitk.ReadImage(file)
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array[i,:] = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
+                if opts.method in mean_var_std_list:
+                    array = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
+                    concat_array[i,:] = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
             else:
-                concat_array[i,:] = array.reshape(array.shape[0], -1)
+                if opts.method in mean_var_std_list:
+                    array = array.reshape(array.shape[0], -1)
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
+                    concat_array[i,:] = array.reshape(array.shape[0], -1)
 
     elif image_type == 'warp':
         # Assume all warp fields are in the same space
-        concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
         shape = sitk.GetArrayViewFromImage(inputRefImage).shape
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
@@ -251,9 +261,19 @@ if __name__ == "__main__":
             img = sitk.ReadImage(file)
             array = sitk.GetArrayViewFromImage(img)
             if opts.normalize: # divide the image values by its mean
-                concat_array[i,:] = array.flatten()/array.mean()
+                if opts.method in mean_var_std_list:
+                    array = array.flatten()/array.mean()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
+                    concat_array[i,:] = array.flatten()/array.mean()
             else:
-                concat_array[i,:] = array.flatten()
+                if opts.method in mean_var_std_list:
+                    array = array.flatten()
+                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
+                else:
+                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
+                    concat_array[i,:] = array.flatten()
 
     if opts.verbose:
         print(f"Computing output {opts.method}")
