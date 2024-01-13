@@ -7,15 +7,16 @@ differing substantially in some of the implementation steps.
 
 ## How does this all work?
 
-The ANTs unbiased model/template building method consists of the iterative application
-of two major stages, the registration stage, and the template updating stage.
+The ANTs unbiased model/template building method consists of the **iterative** application
+of two major stages:
 
+#### Stage 1: all-to-target registration
 In the registration stage, all inputs are registered to a target, which is either
 the initial target (first round) or the evolving template from the previous round.
 After registration, each input is resampled into the target space.
 
+#### Stage 2: template-updating
 In the template updating stage, several sub-steps happen.
-
 1. The resampled inputs are voxel-wise averaged.
 2. The resulting average has a sharpening filter applied.
 3. The affine transforms from inputs to targets are averaged.
@@ -64,7 +65,7 @@ This pipeline is primarity written in `bash`, and requires [ANTs](https://github
 for the primary commands, and [qbatch](https://github.com/pipitone/qbatch)
 for running commands locally or with cluster integration.
 
-A depdenency submodule of [minc-toolkit-extras](https://github.com/cobralab/minc-toolkit-extras)
+A dependency submodule of [minc-toolkit-extras](https://github.com/cobralab/minc-toolkit-extras)
 is automatically included with appropriate versioning via a submodule.
 
 (Optional) advanced averaging options are provided by a python scripts which require
@@ -187,7 +188,7 @@ containing subject-wise modelbuild outputs. See above for details.
 
 ## Deformation Based Morphometry (DBM) -- Model build must be completed first
 
-Once a unbiased average model has been constructed, its possible to post-process the consensus deformation fields
+Once a unbiased average model has been constructed, it's possible to post-process the consensus deformation fields
 to produce Jacobian determinants which encode the voxel-wise distance from each input scan to the consensus
 average.
 
