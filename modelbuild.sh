@@ -975,7 +975,7 @@ for reg_type in "${_arg_stages[@]}"; do
           else
             bootstrap=""
           fi
-          if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz ]]; then
+          if [[ ! (-s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz && -s ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat)  ]]; then
             if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
               # Linear stages of registration
               walltime_reg=${_arg_walltime_linear}
