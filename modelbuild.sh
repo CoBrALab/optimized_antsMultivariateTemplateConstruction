@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # ARG_HELP([A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping, can be a comma separated list same length as number of iterations],[0.25])

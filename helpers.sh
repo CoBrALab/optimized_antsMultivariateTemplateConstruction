@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Calculator for maths
 calc () { awk "BEGIN{ print $* }" ;}

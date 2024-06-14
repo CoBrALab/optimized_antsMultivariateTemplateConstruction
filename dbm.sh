@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ARG_HELP([DBM post-processing for modelbuild.sh from optimized_antsMultivariateTemplateConstruction])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements, reduce precision)],[])

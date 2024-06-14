@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Created by argbash-init v2.10.0
 # ARG_HELP([Resampling from commonspace to subjectspace for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction])
