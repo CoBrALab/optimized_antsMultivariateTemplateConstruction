@@ -697,7 +697,7 @@ fi
 if [[ ${_arg_average_norm} == "off" ]]; then
   unset _arg_average_norm
 else
-  _arg_average_norm=2
+  _arg_average_norm=1
 fi
 
 # Averaging function
