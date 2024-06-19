@@ -82,7 +82,6 @@ The following are features missing compared to `antsMultivariateTemplateConstruc
   - modality weights
 - change non-linear transform type
 - metric control for all stages
-- nonlinear parameter control
 
 ### Will not be implemented
 
