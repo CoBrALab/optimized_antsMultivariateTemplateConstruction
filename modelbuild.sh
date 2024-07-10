@@ -1150,7 +1150,7 @@ for reg_type in "${_arg_stages[@]}"; do
           laplacian)
             echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
               Sharpen ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate 0
             ;;
           unsharp)
             echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
