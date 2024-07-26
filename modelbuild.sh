@@ -6,6 +6,10 @@
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path)],[first])
 # ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target if a file],[])
 # ARG_OPTIONAL_SINGLE([starting-average-resolution],[],[If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild],[])
+# ARG_OPTIONAL_SINGLE([starting-average-type],[],[Type of averaging to apply for starting average],[median])
+# ARG_OPTIONAL_SINGLE([starting-average-prog],[],[Software to use for averaging starting average\n        python with SimpleITK needed for trimmed_mean, efficient_trimean, and huber],[ANTs])
+# ARG_OPTIONAL_BOOLEAN([starting-average-norm],[],[Normalize images by their mean before averaging during starting average],[on])
+
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[4])
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
 
@@ -116,6 +120,9 @@ _arg_gradient_step="0.25"
 _arg_starting_target="first"
 _arg_starting_target_mask=
 _arg_starting_average_resolution=
+_arg_starting_average_type="median"
+_arg_starting_average_prog="ANTs"
+_arg_starting_average_norm="on"
 _arg_iterations="4"
 _arg_convergence="1e-7"
 _arg_syn_shrink_factors=
@@ -156,7 +163,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--starting-average-type <arg>] [--starting-average-prog <arg>] [--(no-)starting-average-norm] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text file, one line per input"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -164,6 +171,10 @@ print_help()
   printf '\t%s\n' "--starting-target: Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path) (default: 'first')"
   printf '\t%s\n' "--starting-target-mask: Mask for starting target if a file (no default)"
   printf '\t%s\n' "--starting-average-resolution: If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild (no default)"
+  printf '\t%s\n' "--starting-average-type: Type of averaging to apply for starting average (default: 'median')"
+  printf '\t%s\n' "--starting-average-prog: Software to use for averaging starting average
+		        python with SimpleITK needed for trimmed_mean, efficient_trimean, and huber (default: 'ANTs')"
+  printf '\t%s\n' "--starting-average-norm, --no-starting-average-norm: Normalize images by their mean before averaging during starting average (on by default)"
   printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '4')"
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
   printf '\t%s\n' "--syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)"
@@ -257,6 +268,26 @@ parse_commandline()
         ;;
       --starting-average-resolution=*)
         _arg_starting_average_resolution="${_key##--starting-average-resolution=}"
+        ;;
+      --starting-average-type)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_average_type="$2"
+        shift
+        ;;
+      --starting-average-type=*)
+        _arg_starting_average_type="${_key##--starting-average-type=}"
+        ;;
+      --starting-average-prog)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_starting_average_prog="$2"
+        shift
+        ;;
+      --starting-average-prog=*)
+        _arg_starting_average_prog="${_key##--starting-average-prog=}"
+        ;;
+      --no-starting-average-norm|--starting-average-norm)
+        _arg_starting_average_norm="on"
+        test "${1:0:5}" = "--no-" && _arg_starting_average_norm="off"
         ;;
       --iterations)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
@@ -702,15 +733,18 @@ fi
 
 # Averaging function
 average_images () {
-  local output=$1
+  local average_prog=$1
+  local average_type=$2
+  local average_norm=$3
+  local output=$4
   shift
   local avg_inputs=("$@")
 
-  if [[ ${_arg_average_prog} == "ANTs" ]]; then
-    case ${_arg_average_type} in
+  if [[ ${average_prog} == "ANTs" ]]; then
+    case ${average_type} in
       mean)
         echo AverageImages 3 ${output} \
-          ${_arg_average_norm:-0} \
+          ${average_norm:-0} \
           "${avg_inputs[@]}"
       ;;
       median)
@@ -722,8 +756,8 @@ average_images () {
   else
     echo ${__dir}/sitk_image_math.py \
       -o ${output} \
-      --method ${_arg_average_type} \
-      ${_arg_average_norm:+--normalize} \
+      --method ${average_type} \
+      ${average_norm:+--normalize} \
       --file-list "${avg_inputs[@]}"
   fi
 }
@@ -734,7 +768,7 @@ if [[ ! -s ${_arg_starting_target} ]]; then
     mkdir -p ${_arg_output_dir}/initialaverage
     if [[ ${_arg_starting_target} == "dumb" ]]; then
       info "Generating initial average of all subjects using ${_arg_average_type} method"
-      average_images ${_arg_output_dir}/initialaverage/initialtarget.nii.gz "${_arg_inputs[@]}" \
+      average_images ${_arg_starting_average_prog} ${_arg_starting_average_type} ${_arg_starting_average_norm} ${_arg_output_dir}/initialaverage/initialtarget.nii.gz "${_arg_inputs[@]}" \
         >${_arg_output_dir}/jobs/${__datetime}/initialaverage
 
       if [[ -n ${_arg_starting_average_resolution} ]]; then
@@ -804,7 +838,7 @@ if [[ ! -s ${_arg_starting_target} ]]; then
           -o ${_arg_output_dir}/initialaverage/$(basename ${file} | extension_strip).nii.gz >>${_arg_output_dir}/jobs/${__datetime}/initialaverage_resample_com
       done
 
-      average_images ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
+      average_images ${_arg_starting_average_prog} ${_arg_starting_average_type} ${_arg_starting_average_norm} ${_arg_output_dir}/initialaverage/initialtarget_com.nii.gz \
         $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/initialaverage/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
         >>${_arg_output_dir}/jobs/${__datetime}/initialaverage_com
 
@@ -1141,7 +1175,7 @@ for reg_type in "${_arg_stages[@]}"; do
           echo "#!/bin/bash" >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           echo "set -euo pipefail" >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
-        average_images ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
+        average_images ${_arg_average_prog} ${_arg_average_type} ${_arg_average_norm} ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
           $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
           >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
