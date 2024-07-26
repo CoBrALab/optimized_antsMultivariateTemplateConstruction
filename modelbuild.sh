@@ -674,13 +674,6 @@ if [[ -n ${_arg_syn_convergence} && -n ${_arg_syn_shrink_factors} && -n ${_arg_s
   _arg_syn_smoothing_sigmas="--syn-smoothing-sigmas ${_arg_syn_smoothing_sigmas}"
 fi
 
-# Include rigid component in affine when updating template
-if [[ ${_arg_rigid_update} == "on" ]]; then
-  AVERAGE_AFFINE_PROGRAM="AverageAffineTransform"
-else
-  AVERAGE_AFFINE_PROGRAM="AverageAffineTransformNoRigid"
-fi
-
 # Enable block for qbatch job submission
 if [[ ${_arg_block} == "on" ]]; then
   _arg_block="--block"
@@ -702,7 +695,6 @@ for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
   if ! command -v ${program} &>/dev/null; then
     failure "Required program ${program} not found!"
   fi
-
 done
 
 # Check for valid average choices
@@ -892,8 +884,12 @@ if [[ ! -s ${_arg_starting_target} ]]; then
 
       last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_com"
     elif [[ ${_arg_starting_target} == "first" ]]; then
-      info "Using the first input image "${_arg_inputs[0]}" as initalization target"
-      cp -f ${_arg_inputs[0]} ${_arg_output_dir}/initialaverage/initialtarget.nii.gz
+      info "Using the first input image ${_arg_inputs[0]} as initalization target"
+      if [[ ${_arg_skip_file_checks} == "on" ]]; then
+        ln -srf ${_arg_inputs[0]} ${_arg_output_dir}/initialaverage/initialtarget.nii.gz
+      else
+        cp -f ${_arg_inputs[0]} ${_arg_output_dir}/initialaverage/initialtarget.nii.gz
+      fi
       last_round_job=""
     else
       error "Starting target setting ${_arg_starting_target} unknown"
@@ -985,9 +981,9 @@ for reg_type in "${_arg_stages[@]}"; do
         mkdir -p ${_arg_output_dir}/${reg_type}/${i}/resample/masks
 
         # Empty files
-        >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
-        >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
-        >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
+        true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+        true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
+        true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
 
         # Register images to target
         for j in "${!_arg_inputs[@]}"; do
