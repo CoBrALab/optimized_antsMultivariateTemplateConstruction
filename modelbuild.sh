@@ -729,7 +729,7 @@ average_images () {
   local average_type=$2
   local average_norm=$3
   local output=$4
-  shift
+  shift 4
   local avg_inputs=("$@")
 
   if [[ ${average_prog} == "ANTs" ]]; then
