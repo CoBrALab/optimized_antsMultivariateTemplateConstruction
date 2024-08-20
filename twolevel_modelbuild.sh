@@ -8,6 +8,8 @@
 # ARG_OPTIONAL_SINGLE([firstlevel-starting-target-mask],[],[First-level Starting target mask, must be combined with file based starting target],[])
 # ARG_OPTIONAL_SINGLE([secondlevel-starting-target],[],[Second-level starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path)],[first])
 # ARG_OPTIONAL_SINGLE([secondlevel-starting-target-mask],[],[Second-level Starting target mask, must be combined with file based starting target],[])
+# ARG_OPTIONAL_SINGLE([secondlevel-final-target],[],[Second-level final target],[])
+# ARG_OPTIONAL_SINGLE([secondlevel-final-target-mask],[],[Second-level Starting target mask],[])
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per subject, comma separated scans per subject],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
@@ -46,6 +48,8 @@ _arg_firstlevel_starting_target="first"
 _arg_firstlevel_starting_target_mask=
 _arg_secondlevel_starting_target="first"
 _arg_secondlevel_starting_target_mask=
+_arg_secondlevel_final_target=
+_arg_secondlevel_final_target_mask=
 _arg_debug="off"
 _arg_dry_run="off"
 
@@ -53,7 +57,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A wrapper to enable two-level modelbuild (aka longitudinal) modelling using optimized_antsMultivariateTemplateConstruction"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--masks <arg>] [--firstlevel-starting-target <arg>] [--firstlevel-starting-target-mask <arg>] [--secondlevel-starting-target <arg>] [--secondlevel-starting-target-mask <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--masks <arg>] [--firstlevel-starting-target <arg>] [--firstlevel-starting-target-mask <arg>] [--secondlevel-starting-target <arg>] [--secondlevel-starting-target-mask <arg>] [--secondlevel-final-target <arg>] [--secondlevel-final-target-mask <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per subject, comma separated scans per subject"
   printf '\t%s\n' "... : Arguments to be passed to modelbuild.sh without validation"
   printf '\t%s\n' "-h, --help: Prints help"
@@ -63,6 +67,8 @@ print_help()
   printf '\t%s\n' "--firstlevel-starting-target-mask: First-level Starting target mask, must be combined with file based starting target (no default)"
   printf '\t%s\n' "--secondlevel-starting-target: Second-level starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path) (default: 'first')"
   printf '\t%s\n' "--secondlevel-starting-target-mask: Second-level Starting target mask, must be combined with file based starting target (no default)"
+  printf '\t%s\n' "--secondlevel-final-target: Second-level final target (no default)"
+  printf '\t%s\n' "--secondlevel-final-target-mask: Second-level Starting target mask (no default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
@@ -130,6 +136,22 @@ parse_commandline()
         ;;
       --secondlevel-starting-target-mask=*)
         _arg_secondlevel_starting_target_mask="${_key##--secondlevel-starting-target-mask=}"
+        ;;
+      --secondlevel-final-target)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_secondlevel_final_target="$2"
+        shift
+        ;;
+      --secondlevel-final-target=*)
+        _arg_secondlevel_final_target="${_key##--secondlevel-final-target=}"
+        ;;
+      --secondlevel-final-target-mask)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_secondlevel_final_target_mask="$2"
+        shift
+        ;;
+      --secondlevel-final-target-mask=*)
+        _arg_secondlevel_final_target_mask="${_key##--secondlevel-final-target-mask=}"
         ;;
       --no-debug|--debug)
         _arg_debug="on"
@@ -299,6 +321,8 @@ ${__dir}/modelbuild.sh ${_arg_debug:+--debug} \
   --output-dir ${_arg_output_dir}/secondlevel \
   --starting-target ${_arg_secondlevel_starting_target} \
   ${_arg_secondlevel_starting_target_mask:+--starting-target-mask ${_arg_secondlevel_starting_target_mask}} \
+  ${_arg_secondlevel_final_target:+--final-target ${_arg_secondlevel_final_target}} \
+  ${_arg_secondlevel_final_target_mask:+--final-target-mask ${_arg_secondlevel_final_target_mask}} \
   ${secondlevel_masks} \
   ${_arg_output_dir}/secondlevel/input_files.txt
 
