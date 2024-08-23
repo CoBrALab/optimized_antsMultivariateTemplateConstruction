@@ -57,7 +57,6 @@ computational load
   - Affine transforms are averaged without rigid component
   - Average sharpening defaults to UnsharpMask
   - Computation defaults to double
-- convergence for registration loosened to `1e-7`
 
 ## Requirements
 

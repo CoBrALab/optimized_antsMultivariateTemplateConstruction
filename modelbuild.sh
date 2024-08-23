@@ -11,7 +11,7 @@
 # ARG_OPTIONAL_BOOLEAN([starting-average-norm],[],[Normalize images by their mean before averaging during starting average],[on])
 
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[4])
-# ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-7])
+# ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-9])
 
 # ARG_OPTIONAL_SINGLE([syn-shrink-factors],[],[Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence],[])
 # ARG_OPTIONAL_SINGLE([syn-smoothing-sigmas],[],[Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence],[])
@@ -124,7 +124,7 @@ _arg_starting_average_type="median"
 _arg_starting_average_prog="ANTs"
 _arg_starting_average_norm="on"
 _arg_iterations="4"
-_arg_convergence="1e-7"
+_arg_convergence="1e-9"
 _arg_syn_shrink_factors=
 _arg_syn_smoothing_sigmas=
 _arg_syn_convergence=
@@ -176,7 +176,7 @@ print_help()
 		        python with SimpleITK needed for trimmed_mean, efficient_trimean, and huber (default: 'ANTs')"
   printf '\t%s\n' "--starting-average-norm, --no-starting-average-norm: Normalize images by their mean before averaging during starting average (on by default)"
   printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '4')"
-  printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-7')"
+  printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-9')"
   printf '\t%s\n' "--syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)"
   printf '\t%s\n' "--syn-smoothing-sigmas: Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)"
   printf '\t%s\n' "--syn-convergence: Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)"
