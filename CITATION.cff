@@ -12,3 +12,4 @@ repository-code: >-
   https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction
 version: '1.0'
 date-released: '2024-12-06'
+license-url: https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/blob/master/LICENSE
