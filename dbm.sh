@@ -191,15 +191,12 @@ parse_commandline()
 }
 
 
-handle_passed_args_count()
-{
+handle_passed_args_count() {
   local _required_args_string="'inputs'"
   test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
 }
 
-
-assign_positional_args()
-{
+assign_positional_args() {
   local _positional_name _shift_for=$1
   _positional_names="_arg_inputs "
   _our_args=$((${#_positionals[@]} - 1))
@@ -241,6 +238,8 @@ __base="$(basename "${__file}" .sh)"
 # shellcheck disable=SC2034,SC2015
 __invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
 
+# Prefight check for required programs
+preflight_check
 
 # Setup a directory which contains all commands run
 # for this invocation
@@ -284,15 +283,7 @@ fi
 IFS=',' read -r -a _arg_jacobian_smooth <<<${_arg_jacobian_smooth}
 
 # Prefight check for required programs
-for program in qbatch ImageMath \
-  ThresholdImage ExtractRegionFromImageByMask \
-  antsApplyTransforms parallel; do
-
-  if ! command -v ${program} &>/dev/null; then
-    failure "Required program ${program} not found!"
-  fi
-
-done
+preflight_check
 
 # Make output directories
 mkdir -p ${_arg_output_dir}/dbm/intermediate/delin/{affine,warp,jacobian}

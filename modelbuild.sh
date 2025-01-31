@@ -570,7 +570,6 @@ assign_positional_args 1 "${_positionals[@]}"
 set -uo pipefail
 set -eE -o functrace
 
-
 # Load up helper scripts and define helper variables
 # shellcheck source=helpers.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
@@ -580,6 +579,9 @@ __file="${__dir}/$(basename "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")"
 __base="$(basename "${__file}" .sh)"
 # shellcheck disable=SC2034,SC2015
 __invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
+
+# Prefight check for required programs
+preflight_check
 
 # Setup a directory which contains all commands run
 # for this invocation
@@ -611,7 +613,7 @@ done
 
 #Check for duplicate filenames
 duplicates=$(IFS=$'\n' ; sort <<<"${input_filenames_for_dup_check[*]}" | uniq -d)
-if [[ ! -z ${duplicates} ]]; then
+if [[ -n ${duplicates} ]]; then
   failure "The following filenames are duplicated in the input file, file names must be unique \n ${duplicates}"
 fi
 
@@ -685,17 +687,6 @@ fi
 if [[ ! -z ${_arg_job_predepend} ]]; then
   _arg_job_predepend="--depend ${_arg_job_predepend}*"
 fi
-
-# Prefight check for required programs
-for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
-  ThresholdImage ExtractRegionFromImageByMask antsAI ConvertImage \
-  antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
-  antsRegistration_affine_SyN.sh parallel; do
-
-  if ! command -v ${program} &>/dev/null; then
-    failure "Required program ${program} not found!"
-  fi
-done
 
 # Check for valid average choices
 if [[ ${_arg_average_prog} == "ANTs" ]]; then

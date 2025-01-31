@@ -265,6 +265,13 @@ __base="$(basename "${__file}" .sh)"
 # shellcheck disable=SC2034,SC2015
 __invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
 
+if [[ ${_arg_debug} == "off" ]]; then
+  unset _arg_debug
+fi
+
+# Prefight check for required programs
+preflight_check
+
 # Setup a directory which contains all commands run
 # for this invocation
 mkdir -p ${_arg_output_dir}/jobs/${__datetime}

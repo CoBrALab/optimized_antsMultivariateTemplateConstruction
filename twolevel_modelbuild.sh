@@ -224,16 +224,7 @@ if [[ ${_arg_debug} == "off" ]]; then
 fi
 
 # Prefight check for required programs
-for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
-  ThresholdImage ExtractRegionFromImageByMask antsAI ConvertImage \
-  antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
-  antsRegistration_affine_SyN.sh parallel; do
-
-  if ! command -v ${program} &>/dev/null; then
-    failure "Required program ${program} not found!"
-  fi
-done
-
+preflight_check
 
 # Check for mask and file provided together
 if [[ -s ${_arg_firstlevel_starting_target_mask} ]]; then

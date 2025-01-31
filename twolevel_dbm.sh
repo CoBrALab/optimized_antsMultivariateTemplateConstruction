@@ -168,6 +168,9 @@ if [[ ${_arg_debug} == "off" ]]; then
   unset _arg_debug
 fi
 
+# Prefight check for required programs
+preflight_check
+
 # Setup a directory which contains all commands run
 # for this invocation
 mkdir -p ${_arg_output_dir}/secondlevel/dbm/jobs/${__datetime}

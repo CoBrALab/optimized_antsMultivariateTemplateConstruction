@@ -179,7 +179,8 @@ if [[ ${_arg_debug} == "off" ]]; then
   unset _arg_debug
 fi
 
-#set -x
+# Prefight check for required programs
+preflight_check
 
 # Setup a directory which contains all commands run
 # for this invocation

@@ -127,5 +127,18 @@ function extension_strip()
   sed -r 's/(.nii$|.nii.gz|.nrrd|.mnc|.mnc.gz)$//'
 }
 
+function preflight_check() {
+  # Prefight check for required programs
+  for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
+    ThresholdImage ExtractRegionFromImageByMask antsAI ConvertImage \
+    antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \
+    antsRegistration_affine_SyN.sh parallel; do
+
+    if ! command -v ${program} &>/dev/null; then
+      failure "Required program ${program} not found!"
+    fi
+  done
+}
+
 __dir="$(cd "$(dirname "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")" && pwd)"
 export PATH=${__dir}/minc-toolkit-extras:${PATH}
