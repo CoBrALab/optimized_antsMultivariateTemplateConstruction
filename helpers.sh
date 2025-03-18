@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Calculator for maths
-calc () { awk "BEGIN{ print $* }" ;}
+function calc() { awk "BEGIN{ print $* }"; }
 
 # Setup a timestamp for prefixing all commands
 __datetime=$(date -u +%F_%H-%M-%S-UTC)
@@ -98,32 +98,32 @@ failure_handler() {
   local msg_orig=$5
   local msg_expanded=$(eval echo \"$5\")
   local lineno_fns=${1% 0}
-  if [[ "$lineno_fns" != "0" ]] ; then
+  if [[ "$lineno_fns" != "0" ]]; then
     lineno="${lineno} ${lineno_fns}"
   fi
   failure "${BASH_SOURCE[1]}:${fn}[${lineno}] Failed with status ${exitstatus}: \n\t${msg_orig}\n\t${msg_expanded}"
 }
 trap 'failure_handler "${BASH_LINENO[*]}" "$LINENO" "${FUNCNAME[*]:-script}" "$?" "$BASH_COMMAND"' ERR
 
-#This function is used to cleanly exit any script. It does this displaying a
+# This function is used to cleanly exit any script. It does this displaying a
 # given error message, and exiting with an error code.
-function error_exit {
-    failure "$@"
+function error_exit() {
+  failure "$@"
 }
-#Trap the killer signals so that we can exit with a good message.
+
+# Trap the killer signals so that we can exit with a good message.
 trap "error_exit 'Exiting: Received signal SIGHUP'" SIGHUP
 trap "error_exit 'Exiting: Received signal SIGINT'" SIGINT
 trap "error_exit 'Exiting: Received signal SIGTERM'" SIGTERM
 
-function run_smart {
+function run_smart() {
   # Function runs the command it wraps if the file does not exist
   if [[ ! -s "$1" ]]; then
     "$2"
   fi
 }
 
-function extension_strip()
-{
+function extension_strip() {
   sed -r 's/(.nii$|.nii.gz|.nrrd|.mnc|.mnc.gz)$//'
 }
 
