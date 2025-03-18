@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# ARG_HELP([A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh])
+# ARG_HELP([A qbatch enabled, optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([gradient-step],[],[Gradient scaling step during template warping, can be a comma separated list same length as number of iterations],[0.25])
+
 # ARG_OPTIONAL_SINGLE([starting-target],[],[Starting target, dumb average (dumb), align all inputs using their center-of-mass before averaging (com) use the first input (first), or an external file (provide path)],[first])
 # ARG_OPTIONAL_SINGLE([starting-target-mask],[],[Mask for starting target if a file],[])
 # ARG_OPTIONAL_SINGLE([starting-average-resolution],[],[If no starting target is provided, an average is constructed from all inputs, resample average to a target resolution MxNxO before modelbuild],[])
@@ -13,43 +14,52 @@
 # ARG_OPTIONAL_SINGLE([iterations],[],[Number of iterations of model building per stage],[4])
 # ARG_OPTIONAL_SINGLE([convergence],[],[Convergence limit during registration calls],[1e-9])
 
-# ARG_OPTIONAL_SINGLE([syn-shrink-factors],[],[Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence],[])
-# ARG_OPTIONAL_SINGLE([syn-smoothing-sigmas],[],[Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence],[])
-# ARG_OPTIONAL_SINGLE([syn-convergence],[],[Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas],[])
-# ARG_OPTIONAL_SINGLE([syn-control],[],[Non-linear (SyN) gradient and regularization parameters, not checked for correctness],[0.1,3,0])
 # ARG_OPTIONAL_SINGLE([linear-shrink-factors],[],[Shrink factors for linear stages, provide to override automatic generation, must be provided with sigmas and convergence],[])
 # ARG_OPTIONAL_SINGLE([linear-smoothing-sigmas],[],[Smoothing sigmas for linear stages, provide to override automatic generation, must be provided with shrinks and convergence],[])
 # ARG_OPTIONAL_SINGLE([linear-convergence],[],[Convergence levels for linear stages, provide to override automatic generation, must be provided with shrinks and sigmas],[])
 
+# ARG_OPTIONAL_SINGLE([syn-shrink-factors],[],[Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence],[])
+# ARG_OPTIONAL_SINGLE([syn-smoothing-sigmas],[],[Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence],[])
+# ARG_OPTIONAL_SINGLE([syn-convergence],[],[Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas],[])
+# ARG_OPTIONAL_SINGLE([syn-control],[],[Non-linear (SyN) gradient and regularization parameters, not checked for correctness],[0.2,3,0])
+# ARG_OPTIONAL_SINGLE([syn-metric],[],[Non-linear (SyN) metric and radius or bins, choose Mattes[32] for faster registrations],[CC[2]])
+
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements)],[])
 # ARG_OPTIONAL_BOOLEAN([fast],[],[Run SyN registration with Mattes instead of CC],[])
+
 # ARG_OPTIONAL_SINGLE([average-type],[],[Type of averaging to apply during modelbuild],[mean])
 # ARG_OPTIONAL_SINGLE([average-prog],[],[Software to use for averaging images and transforms\n        python with SimpleITK needed for trimmed_mean, efficient_trimean, and huber],[ANTs])
 # ARG_OPTIONAL_BOOLEAN([average-norm],[],[Normalize images by their mean before averaging],[on])
+# ARG_TYPE_GROUP_SET([averagetype],[AVERAGE],[average-type],[mean,median,trimmed_mean,efficient_trimean,huber])
+# ARG_TYPE_GROUP_SET([averageprogtype],[PROG],[average-prog],[ANTs,python])
+
 # ARG_OPTIONAL_BOOLEAN([nlin-shape-update],[],[Perform nlin shape update, disable to switch to a forward-only modelbuild],[on])
 # ARG_OPTIONAL_BOOLEAN([affine-shape-update],[],[Scale template by inverse of average affine transforms during shape update step],[on])
 # ARG_OPTIONAL_BOOLEAN([scale-affines],[],[Apply gradient step scaling factor to average affine during shape update step, requires python with VTK and SimpleITK],[])
 # ARG_OPTIONAL_BOOLEAN([rigid-update],[],[Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation)],[])
-# ARG_TYPE_GROUP_SET([averagetype],[AVERAGE],[average-type],[mean,median,trimmed_mean,efficient_trimean,huber])
-# ARG_TYPE_GROUP_SET([averageprogtype],[PROG],[average-prog],[ANTs,python])
+
 # ARG_OPTIONAL_SINGLE([sharpen-type],[],[Type of sharpening applied to average during modelbuild],[unsharp])
 # ARG_TYPE_GROUP_SET([sharptypetype],[SHARPEN],[sharpen-type],[none,laplacian,unsharp])
+
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
 # ARG_OPTIONAL_BOOLEAN([mask-extract],[],[Use masks to extract images before registration],[])
 # ARG_OPTIONAL_SINGLE([mask-merge-threshold],[],[Threshold to combine masks during averaging],[0.5])
 
 # ARG_OPTIONAL_SINGLE([stages],[],[Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only','volgenmodel-nlin'), append a number in brackets 'rigid[n]' to override global iteration setting],[rigid,similarity,affine,nlin])
 # ARG_OPTIONAL_BOOLEAN([reuse-affines],[],[Reuse affines from previous stage/iteration to initialize next stage],[off])
+
 # ARG_OPTIONAL_SINGLE([final-target],[],[Perform a final registration between the average and final target, used in postprocessing],[none])
 # ARG_OPTIONAL_SINGLE([final-target-mask],[],[Mask for the final target used in postprocessing],[none])
 
 # ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:30:00])
 # ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:45:00])
 # ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[4:30:00])
+
 # ARG_OPTIONAL_SINGLE([jobname-prefix],[],[Prefix to add to front of job names, used by twolevel wrapper],[])
 # ARG_OPTIONAL_SINGLE([job-predepend],[],[Job name dependency pattern to prepend to all jobs, used by twolevel wrapper],[])
 # ARG_OPTIONAL_BOOLEAN([skip-file-checks],[],[Skip preflight checking of existence of files, used by twolevel wrapper],[])
-# ARG_OPTIONAL_BOOLEAN([block],[],[For SGE, PBS and SLURM, blocks execution until jobs are finished.],[])
+# ARG_OPTIONAL_BOOLEAN([block],[],[For SGE, PBS and SLURM, blocks execution until jobs are finished],[])
+
 # ARG_OPTIONAL_BOOLEAN([debug],[],[Debug mode, print all commands to stdout],[])
 # ARG_OPTIONAL_BOOLEAN([dry-run],[],[Dry run, don't run any commands, implies debug],[])
 # ARG_POSITIONAL_INF([inputs],[Input text file, one line per input],[1])
@@ -58,7 +68,7 @@
 # needed because of Argbash --> m4_ignore([
 ### START OF CODE GENERATED BY Argbash v2.10.0 one line above ###
 # Argbash is a bash code generator used to get arguments parsing right.
-# Argbash is FREE SOFTWARE, see https://argbash.io for more info
+# Argbash is FREE SOFTWARE, see https://argbash.dev for more info
 
 
 die()
@@ -125,13 +135,14 @@ _arg_starting_average_prog="ANTs"
 _arg_starting_average_norm="on"
 _arg_iterations="4"
 _arg_convergence="1e-9"
-_arg_syn_shrink_factors=
-_arg_syn_smoothing_sigmas=
-_arg_syn_convergence=
-_arg_syn_control="0.1,3,0"
 _arg_linear_shrink_factors=
 _arg_linear_smoothing_sigmas=
 _arg_linear_convergence=
+_arg_syn_shrink_factors=
+_arg_syn_smoothing_sigmas=
+_arg_syn_convergence=
+_arg_syn_control="0.2,3,0"
+_arg_syn_metric="CC[2]"
 _arg_float="off"
 _arg_fast="off"
 _arg_average_type="mean"
@@ -162,8 +173,8 @@ _arg_dry_run="off"
 
 print_help()
 {
-  printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--starting-average-type <arg>] [--starting-average-prog <arg>] [--(no-)starting-average-norm] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--starting-average-type <arg>] [--starting-average-prog <arg>] [--(no-)starting-average-norm] [--iterations <arg>] [--convergence <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--syn-metric <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text file, one line per input"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -177,13 +188,14 @@ print_help()
   printf '\t%s\n' "--starting-average-norm, --no-starting-average-norm: Normalize images by their mean before averaging during starting average (on by default)"
   printf '\t%s\n' "--iterations: Number of iterations of model building per stage (default: '4')"
   printf '\t%s\n' "--convergence: Convergence limit during registration calls (default: '1e-9')"
-  printf '\t%s\n' "--syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)"
-  printf '\t%s\n' "--syn-smoothing-sigmas: Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)"
-  printf '\t%s\n' "--syn-convergence: Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)"
-  printf '\t%s\n' "--syn-control: Non-linear (SyN) gradient and regularization parameters, not checked for correctness (default: '0.1,3,0')"
   printf '\t%s\n' "--linear-shrink-factors: Shrink factors for linear stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)"
   printf '\t%s\n' "--linear-smoothing-sigmas: Smoothing sigmas for linear stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)"
   printf '\t%s\n' "--linear-convergence: Convergence levels for linear stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)"
+  printf '\t%s\n' "--syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)"
+  printf '\t%s\n' "--syn-smoothing-sigmas: Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)"
+  printf '\t%s\n' "--syn-convergence: Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)"
+  printf '\t%s\n' "--syn-control: Non-linear (SyN) gradient and regularization parameters, not checked for correctness (default: '0.2,3,0')"
+  printf '\t%s\n' "--syn-metric: Non-linear (SyN) metric and radius or bins, choose Mattes[32] for faster registrations (default: 'CC[2]')"
   printf '\t%s\n' "--float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)"
   printf '\t%s\n' "--fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)"
   printf '\t%s\n' "--average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median', 'trimmed_mean', 'efficient_trimean' and 'huber' (default: 'mean')"
@@ -208,7 +220,7 @@ print_help()
   printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
   printf '\t%s\n' "--job-predepend: Job name dependency pattern to prepend to all jobs, used by twolevel wrapper (no default)"
   printf '\t%s\n' "--skip-file-checks, --no-skip-file-checks: Skip preflight checking of existence of files, used by twolevel wrapper (off by default)"
-  printf '\t%s\n' "--block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)"
+  printf '\t%s\n' "--block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished (off by default)"
   printf '\t%s\n' "--debug, --no-debug: Debug mode, print all commands to stdout (off by default)"
   printf '\t%s\n' "--dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)"
 }
@@ -305,6 +317,30 @@ parse_commandline()
       --convergence=*)
         _arg_convergence="${_key##--convergence=}"
         ;;
+      --linear-shrink-factors)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_linear_shrink_factors="$2"
+        shift
+        ;;
+      --linear-shrink-factors=*)
+        _arg_linear_shrink_factors="${_key##--linear-shrink-factors=}"
+        ;;
+      --linear-smoothing-sigmas)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_linear_smoothing_sigmas="$2"
+        shift
+        ;;
+      --linear-smoothing-sigmas=*)
+        _arg_linear_smoothing_sigmas="${_key##--linear-smoothing-sigmas=}"
+        ;;
+      --linear-convergence)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_linear_convergence="$2"
+        shift
+        ;;
+      --linear-convergence=*)
+        _arg_linear_convergence="${_key##--linear-convergence=}"
+        ;;
       --syn-shrink-factors)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
         _arg_syn_shrink_factors="$2"
@@ -337,29 +373,13 @@ parse_commandline()
       --syn-control=*)
         _arg_syn_control="${_key##--syn-control=}"
         ;;
-      --linear-shrink-factors)
+      --syn-metric)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_linear_shrink_factors="$2"
+        _arg_syn_metric="$2"
         shift
         ;;
-      --linear-shrink-factors=*)
-        _arg_linear_shrink_factors="${_key##--linear-shrink-factors=}"
-        ;;
-      --linear-smoothing-sigmas)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_linear_smoothing_sigmas="$2"
-        shift
-        ;;
-      --linear-smoothing-sigmas=*)
-        _arg_linear_smoothing_sigmas="${_key##--linear-smoothing-sigmas=}"
-        ;;
-      --linear-convergence)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_linear_convergence="$2"
-        shift
-        ;;
-      --linear-convergence=*)
-        _arg_linear_convergence="${_key##--linear-convergence=}"
+      --syn-metric=*)
+        _arg_syn_metric="${_key##--syn-metric=}"
         ;;
       --no-float|--float)
         _arg_float="on"

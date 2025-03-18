@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ARG_HELP([Resampling from commonspace to subjectspace for modelbuild.sh from optimized_antsMultivariateTemplateConstruction])
+# ARG_HELP([Resampling from common space to subject space for modelbuild.sh from optimized_antsMultivariateTemplateConstruction])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_BOOLEAN([float],[],[Use float instead of double for calculations (reduce memory requirements, reduce precision)],[])
 # ARG_OPTIONAL_SINGLE([type],[],[Resampled input type, define interpolation type],[label])
@@ -14,7 +14,7 @@
 # ARG_OPTIONAL_SINGLE([jobname-prefix],[],[Prefix to add to front of job names, used by twolevel wrapper],[])
 # ARG_OPTIONAL_SINGLE([resample-input],[],[File to be resampled into subject space],[])
 # ARG_OPTIONAL_SINGLE([append-transforms],[],[Transform files which align modelbuild inputs to target-space, will be applied at the end of the transform chain, append with :1 to indicate applying the inverse],[])
-# ARG_OPTIONAL_SINGLE([prepend-transforms],[],[Comma seperated list of transforms to add to the transform stack, used by twolevel wrapper],[])
+# ARG_OPTIONAL_SINGLE([prepend-transforms],[],[Comma separated list of transforms to add to the transform stack, used by twolevel wrapper],[])
 # ARG_OPTIONAL_SINGLE([target-space],[],[Target space for each subject, structured the same as the input to modelbuild.sh. inputs is used if not specified.],[])
 # ARG_POSITIONAL_SINGLE([inputs],[Input text files, one line per input, same as those provided to modelbuild.sh],[])
 
@@ -85,7 +85,7 @@ _arg_target_space=
 
 print_help()
 {
-  printf '%s\n' "Resampling from commonspace to subjectspace for modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
+  printf '%s\n' "Resampling from common space to subject space for modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--type <TYPE>] [--resample-input-space <SPACE>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] [--resample-input <arg>] [--append-transforms <arg>] [--prepend-transforms <arg>] [--target-space <arg>] <inputs>\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, same as those provided to modelbuild.sh"
   printf '\t%s\n' "-h, --help: Prints help"
@@ -100,7 +100,7 @@ print_help()
   printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
   printf '\t%s\n' "--resample-input: File to be resampled into subject space (no default)"
   printf '\t%s\n' "--append-transforms: Transform files which align modelbuild inputs to target-space, will be applied at the end of the transform chain, append with :1 to indicate applying the inverse (no default)"
-  printf '\t%s\n' "--prepend-transforms: Comma seperated list of transforms to add to the transform stack, used by twolevel wrapper (no default)"
+  printf '\t%s\n' "--prepend-transforms: Comma separated list of transforms to add to the transform stack, used by twolevel wrapper (no default)"
   printf '\t%s\n' "--target-space: Target space for each subject, structured the same as the input to modelbuild.sh. inputs is used if not specified. (no default)"
 }
 

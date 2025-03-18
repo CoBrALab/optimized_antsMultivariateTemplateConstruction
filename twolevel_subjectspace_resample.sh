@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Created by argbash-init v2.10.0
-# ARG_HELP([Resampling from commonspace to subjectspace for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction])
+# ARG_HELP([Resampling from common space to subject space for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction])
 # ARG_OPTIONAL_SINGLE([output-dir],[],[Output directory for modelbuild],[output])
 # ARG_OPTIONAL_SINGLE([walltime],[],[Walltime for short running stages (averaging, resampling)],[00:15:00])
 # ARG_OPTIONAL_SINGLE([resample-input],[],[Files to be resampled into common space, structured the same as the input to twolevel_modelbuild.sh],[])
@@ -65,7 +65,7 @@ _arg_dry_run="off"
 
 print_help()
 {
-  printf '%s\n' "Resampling from commonspace to subjectspace for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
+  printf '%s\n' "Resampling from common space to subject space for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--walltime <arg>] [--resample-input <arg>] [--resample-input-space <SPACE>] [--append-transforms <arg>] [--target-space <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ... \n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per subject, comma separated scans per subject"
   printf '\t%s\n' "... : Arguments to be passed to subjectspace_resample.sh without validation"
