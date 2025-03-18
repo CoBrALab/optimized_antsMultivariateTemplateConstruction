@@ -1027,9 +1027,6 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_linear_convergence} \
                 ${_arg_linear_shrink_factors} \
                 ${_arg_linear_smoothing_sigmas} \
-                ${_arg_syn_convergence} \
-                ${_arg_syn_shrink_factors} \
-                ${_arg_syn_smoothing_sigmas} \
                 --skip-nonlinear --linear-type ${reg_type} \
                 ${_arg_mask_extract} ${_mask} \
                 ${bootstrap} \
@@ -1050,6 +1047,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_syn_convergence} \
                 ${_arg_syn_shrink_factors} \
                 ${_arg_syn_smoothing_sigmas} \
+                --syn-metric ${_arg_syn_metric} \
                 --syn-control ${_arg_syn_control} \
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}  | extension_strip).nii.gz \
                 ${_arg_mask_extract} ${_mask} \
@@ -1064,9 +1062,6 @@ for reg_type in "${_arg_stages[@]}"; do
               echo antsRegistration_affine_SyN.sh --clobber \
                 ${_arg_float} ${_arg_fast} \
                 ${use_histogram} \
-                ${_arg_linear_convergence} \
-                ${_arg_linear_shrink_factors} \
-                ${_arg_linear_smoothing_sigmas} \
                 ${_arg_syn_convergence} \
                 ${_arg_syn_shrink_factors} \
                 ${_arg_syn_smoothing_sigmas} \
@@ -1091,6 +1086,8 @@ for reg_type in "${_arg_stages[@]}"; do
                   ${_arg_syn_convergence} \
                   ${_arg_syn_shrink_factors} \
                   ${_arg_syn_smoothing_sigmas} \
+                  --syn-metric ${_arg_syn_metric} \
+                  --syn-control ${_arg_syn_control} \
                   -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
                   ${_arg_mask_extract} ${_mask} \
                   --skip-linear \
@@ -1179,7 +1176,7 @@ for reg_type in "${_arg_stages[@]}"; do
 
         # Now we average the transformed input scans and shape update
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ]]; then
-          echo "#!/bin/bash" >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+          echo "#!/usr/bin/env bash" >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           echo "set -euo pipefail" >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
         average_images ${_arg_average_prog} ${_arg_average_type} ${_arg_average_norm} ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
@@ -1390,12 +1387,15 @@ if [[ -s ${_arg_final_target} ]]; then
     fi
     echo antsRegistration_affine_SyN.sh \
       ${_arg_float} ${_arg_fast} \
+      ${use_histogram} \
       ${_arg_linear_convergence} \
       ${_arg_linear_shrink_factors} \
       ${_arg_linear_smoothing_sigmas} \
       ${_arg_syn_convergence} \
       ${_arg_syn_shrink_factors} \
       ${_arg_syn_smoothing_sigmas} \
+      --syn-metric ${_arg_syn_metric} \
+      --syn-control ${_arg_syn_control} \
       ${_arg_final_target_mask} \
       ${target_mask} \
       ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
