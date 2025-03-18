@@ -397,3 +397,9 @@ output/
         │   └── masks
         └── transforms # Affine and warp transform files per input
 ```
+
+## References
+
+https://caff.de/posts/4x4-matrix-decomposition/decomposition.pdf
+https://caff.de/posts/4x4-matrix-decomposition/
+https://thenumb.at/Exponential-Rotations/
