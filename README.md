@@ -400,6 +400,6 @@ output/
 
 ## References
 
-https://caff.de/posts/4x4-matrix-decomposition/decomposition.pdf
-https://caff.de/posts/4x4-matrix-decomposition/
-https://thenumb.at/Exponential-Rotations/
+1. https://caff.de/posts/4x4-matrix-decomposition/decomposition.pdf
+2. https://caff.de/posts/4x4-matrix-decomposition/
+3. https://thenumb.at/Exponential-Rotations/
