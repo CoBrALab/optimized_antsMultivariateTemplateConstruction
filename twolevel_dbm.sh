@@ -266,7 +266,7 @@ while read -r subject_scans; do
         fi
       else
         # Resample within-subject into final-target space
-        mkdir -p ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/{relative,full}/final-target/smoothed
+        mkdir -p ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/{relative,full}/final-target/smooth
         if [[ ! -s ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/full/final-target/$(basename ${scan} | extension_strip).nii.gz ]]; then
           echo "antsApplyTransforms -d 3 --verbose \
             -r ${_arg_output_dir}/secondlevel/final-target/final_target.nii.gz \
@@ -305,7 +305,7 @@ while read -r subject_scans; do
             ${_arg_output_dir}/secondlevel/resampled-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz"
         fi
       else
-        mkdir -p ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/{relative,full}/final-target/smoothed
+        mkdir -p ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/{relative,full}/final-target/smooth
         # Generate Overall Jacobian Determinants in final target space
         if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/final-target/$(basename ${scan} | extension_strip).nii.gz ]]; then
           echo "ImageMath 3 ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/final-target/$(basename ${scan} | extension_strip).nii.gz + \
