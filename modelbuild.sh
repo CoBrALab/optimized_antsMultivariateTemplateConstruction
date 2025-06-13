@@ -998,6 +998,7 @@ for reg_type in "${_arg_stages[@]}"; do
 
         # Register images to target
         for j in "${!_arg_inputs[@]}"; do
+          input_basename=$(basename ${_arg_inputs[${j}]} | extension_strip)
 
           # Check for existence of moving mask, if it exists, add option
           if [[ -s ${_arg_masks[${j}]} ]]; then
@@ -1013,11 +1014,11 @@ for reg_type in "${_arg_stages[@]}"; do
 
           # If three was a previous round of modelbuilding, bootstrap registration with its affine (if enabled), also do so for nlin-only stages
           if [[ $(basename ${target}) == "template_sharpen_shapeupdate.nii.gz" && $(dirname $(dirname $(dirname $(dirname ${target})))) == "${_arg_output_dir}" && ${_arg_reuse_affines} == "on" ]]; then
-            bootstrap="--initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat"
+            bootstrap="--initial-transform $(dirname $(dirname ${target}))/transforms/${input_basename}_0GenericAffine.mat"
           else
             bootstrap=""
           fi
-          if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz ]]; then
+          if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz ]]; then
             if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
               # Linear stages of registration
               walltime_reg=${_arg_walltime_linear}
@@ -1031,9 +1032,9 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_mask_extract} ${_mask} \
                 ${bootstrap} \
                 --convergence ${_arg_convergence} \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz \
                 ${_arg_inputs[${j}]} ${target} \
-                ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
+                ${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_ \
                 >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
             elif [[ ${reg_type} == "nlin" ]]; then
               # Full regisration affine + nlin
@@ -1049,12 +1050,12 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_syn_smoothing_sigmas} \
                 --syn-metric ${_arg_syn_metric} \
                 --syn-control ${_arg_syn_control} \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]}  | extension_strip).nii.gz \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz \
                 ${_arg_mask_extract} ${_mask} \
                 ${bootstrap} \
                 --convergence ${_arg_convergence} \
                 ${_arg_inputs[${j}]} ${target} \
-                ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
+                ${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_ \
                 >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
             elif [[ ${reg_type} == "nlin-only" ]]; then
               # nlin-only registration, affines always bootstrapped from previous iteration (if there is a previous)
@@ -1066,13 +1067,13 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_syn_shrink_factors} \
                 ${_arg_syn_smoothing_sigmas} \
                 --syn-control ${_arg_syn_control} \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz \
                 ${_arg_mask_extract} ${_mask} \
                 ${bootstrap} \
                 --skip-linear \
                 --convergence ${_arg_convergence} \
                 ${_arg_inputs[${j}]} ${target} \
-                ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
+                ${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_ \
                 >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
             elif [[ ${reg_type} == *volgenmodel* ]]; then
               # nlin-only registration, affines always bootstrapped from previous iteration (if there is a previous)
@@ -1088,34 +1089,34 @@ for reg_type in "${_arg_stages[@]}"; do
                   ${_arg_syn_smoothing_sigmas} \
                   --syn-metric ${_arg_syn_metric} \
                   --syn-control ${_arg_syn_control} \
-                  -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+                  -o ${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz \
                   ${_arg_mask_extract} ${_mask} \
                   --skip-linear \
-                  --initial-transform $(dirname $(dirname ${target}))/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
+                  --initial-transform $(dirname $(dirname ${target}))/transforms/${input_basename}_0GenericAffine.mat \
                   --convergence ${_arg_convergence} \
                   ${_arg_inputs[${j}]} ${target} \
-                  ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
+                  ${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_ \
                   >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
             fi
           fi
           # If input masks were provided, resample them using the registration
-          if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz && -s ${_arg_masks[${j}]} ]]; then
+          if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/resample/masks/${input_basename}.nii.gz && -s ${_arg_masks[${j}]} ]]; then
             if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
               echo antsApplyTransforms -d 3 ${_arg_float} \
                 -i ${_arg_masks[${j}]} \
                 -n GenericLabel \
-                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+                -r ${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_0GenericAffine.mat \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/${input_basename}.nii.gz \
                 >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
             else
               echo antsApplyTransforms -d 3 ${_arg_float} \
                 -i ${_arg_masks[${j}]} \
                 -n GenericLabel \
-                -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_1Warp.nii.gz \
-                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
-                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
+                -r ${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_1Warp.nii.gz \
+                -t ${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_0GenericAffine.mat \
+                -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/${input_basename}.nii.gz \
                 >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
             fi
           fi
@@ -1127,7 +1128,7 @@ for reg_type in "${_arg_stages[@]}"; do
             echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/mask.nii.gz 0 \
               $(for j in "${!_arg_inputs[@]}"; do
                 if [[ -s ${_arg_masks[${j}]} ]]; then
-                  echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "
+                  echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/masks/${input_basename}.nii.gz "
                 fi
                 ((++j))
               done) >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
@@ -1180,7 +1181,7 @@ for reg_type in "${_arg_stages[@]}"; do
           echo "set -euo pipefail" >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
         average_images ${_arg_average_prog} ${_arg_average_type} ${_arg_average_norm} ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
+          $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/${input_basename}.nii.gz "; done) \
           >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
           # Shape updating
@@ -1216,22 +1217,22 @@ for reg_type in "${_arg_stages[@]}"; do
             if [[ ${_arg_average_prog} == "ANTs" ]]; then
               if [[ ${_arg_rigid_update} == "on" ]]; then
                 echo AverageAffineTransform 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-                  $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                  $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_0GenericAffine.mat "; done) \
                   >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
               else
                 echo AverageAffineTransformNoRigid 3 ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-                  $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                  $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_0GenericAffine.mat "; done) \
                   >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
               fi
             else
               if [[ ${_arg_rigid_update} == "on" ]]; then
                 echo ${__dir}/sitk_average_affine_transforms.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
-                  --file-list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                  --file-list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_0GenericAffine.mat "; done) \
                   >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
               else
                 echo ${__dir}/sitk_average_affine_transforms.py -o ${_arg_output_dir}/${reg_type}/${i}/average/affine.mat \
                   --no-rigid \
-                  --file-list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat "; done) \
+                  --file-list $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_0GenericAffine.mat "; done) \
                   >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
               fi
             fi
@@ -1261,7 +1262,7 @@ for reg_type in "${_arg_stages[@]}"; do
           if [[ ( ${reg_type} == *nlin* ) && ( ${_arg_nlin_shape_update} == "on" ) ]]; then
             # Average all the warp transforms
             echo AverageImages 3 ${_arg_output_dir}/${reg_type}/${i}/average/warp.nii.gz \
-              0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_1Warp.nii.gz "; done) \
+              0 $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/transforms/${input_basename}_1Warp.nii.gz "; done) \
               >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
             # Scale warp average by the gradient step (note the gradient step is negative!!)
