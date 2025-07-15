@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Based on https://github.com/BIC-MNI/pyezminc/blob/develop/examples/xfmavg_scipy.py
-# and https://caff.de/posts/4X4-matrix-decomposition/decomposition.pdf
+# and https://caff.de/posts/4x4-matrix-decomposition/decomposition.pdf
 
 import SimpleITK as sitk
 import numpy as np
