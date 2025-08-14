@@ -266,7 +266,7 @@ while read -r subject_scans; do
     firstlevel_masks=""
   fi
 
-
+  info "Processing Subject ${i}"
   if [[ ${#scans[@]} -gt 1 ]]; then
     debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --jobname-prefix "twolevel_${__datetime}_subject_${i}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${firstlevel_masks} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
     ${__dir}/modelbuild.sh ${_arg_debug:+--debug} \
@@ -278,7 +278,7 @@ while read -r subject_scans; do
       ${firstlevel_masks} \
       ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt
   else
-    # Generate Idenity Transforms
+    # Generate Identity Transforms
     info "Subject ${i} has only a single scan and will not have a subject wise average, it will be included in the second level model build"
     mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}/final/{transforms,resample,average}
     ln -sfr $(realpath ${scans[0]}) ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz
@@ -304,6 +304,7 @@ else
   secondlevel_masks=""
 fi
 
+info "Processing second-level model build"
 debug "${__dir}/modelbuild.sh ${_arg_debug:+--debug} --skip-file-checks --job-predepend "twolevel_${__datetime}_" ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --output-dir ${_arg_output_dir}/secondlevel ${secondlevel_masks} ${_arg_output_dir}/secondlevel/input_files.txt"
 ${__dir}/modelbuild.sh ${_arg_debug:+--debug} \
   --skip-file-checks \
