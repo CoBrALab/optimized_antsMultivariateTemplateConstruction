@@ -54,6 +54,9 @@
 # ARG_OPTIONAL_SINGLE([walltime-short],[],[Walltime for short running stages (averaging, resampling)],[00:30:00])
 # ARG_OPTIONAL_SINGLE([walltime-linear],[],[Walltime for linear registration stages],[0:45:00])
 # ARG_OPTIONAL_SINGLE([walltime-nonlinear],[],[Walltime for nonlinear registration stages],[4:30:00])
+# ARG_OPTIONAL_SINGLE([chunksize-short],[],[Commands to chunk per job submission for short jobs (averaging, resampling)],[])
+# ARG_OPTIONAL_SINGLE([chunksize-linear],[],[Commands to chunk per job submission for linear registration],[])
+# ARG_OPTIONAL_SINGLE([chunksize-nonlinear],[],[Commands to chunk per job submission for nonlinear registration],[])
 
 # ARG_OPTIONAL_SINGLE([jobname-prefix],[],[Prefix to add to front of job names, used by twolevel wrapper],[])
 # ARG_OPTIONAL_SINGLE([job-predepend],[],[Job name dependency pattern to prepend to all jobs, used by twolevel wrapper],[])
@@ -163,6 +166,9 @@ _arg_final_target_mask="none"
 _arg_walltime_short="00:30:00"
 _arg_walltime_linear="0:45:00"
 _arg_walltime_nonlinear="4:30:00"
+_arg_chunksize_short=
+_arg_chunksize_linear=
+_arg_chunksize_nonlinear=
 _arg_jobname_prefix=
 _arg_job_predepend=
 _arg_skip_file_checks="off"
@@ -174,7 +180,7 @@ _arg_dry_run="off"
 print_help()
 {
   printf '%s\n' "A qbatch enabled, optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh"
-  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--starting-average-type <arg>] [--starting-average-prog <arg>] [--(no-)starting-average-norm] [--iterations <arg>] [--convergence <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--syn-metric <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
+  printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--starting-average-type <arg>] [--starting-average-prog <arg>] [--(no-)starting-average-norm] [--iterations <arg>] [--convergence <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--syn-metric <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--chunksize-short <arg>] [--chunksize-linear <arg>] [--chunksize-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text file, one line per input"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' "--output-dir: Output directory for modelbuild (default: 'output')"
@@ -217,6 +223,9 @@ print_help()
   printf '\t%s\n' "--walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')"
   printf '\t%s\n' "--walltime-linear: Walltime for linear registration stages (default: '0:45:00')"
   printf '\t%s\n' "--walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')"
+  printf '\t%s\n' "--chunksize-short: Commands to chunk per job submission for short jobs (averaging, resampling) (no default)"
+  printf '\t%s\n' "--chunksize-linear: Commands to chunk per job submission for linear registration (no default)"
+  printf '\t%s\n' "--chunksize-nonlinear: Commands to chunk per job submission for nonlinear registration (no default)"
   printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
   printf '\t%s\n' "--job-predepend: Job name dependency pattern to prepend to all jobs, used by twolevel wrapper (no default)"
   printf '\t%s\n' "--skip-file-checks, --no-skip-file-checks: Skip preflight checking of existence of files, used by twolevel wrapper (off by default)"
@@ -506,6 +515,30 @@ parse_commandline()
       --walltime-nonlinear=*)
         _arg_walltime_nonlinear="${_key##--walltime-nonlinear=}"
         ;;
+      --chunksize-short)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_chunksize_short="$2"
+        shift
+        ;;
+      --chunksize-short=*)
+        _arg_chunksize_short="${_key##--chunksize-short=}"
+        ;;
+      --chunksize-linear)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_chunksize_linear="$2"
+        shift
+        ;;
+      --chunksize-linear=*)
+        _arg_chunksize_linear="${_key##--chunksize-linear=}"
+        ;;
+      --chunksize-nonlinear)
+        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+        _arg_chunksize_nonlinear="$2"
+        shift
+        ;;
+      --chunksize-nonlinear=*)
+        _arg_chunksize_nonlinear="${_key##--chunksize-nonlinear=}"
+        ;;
       --jobname-prefix)
         test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
         _arg_jobname_prefix="$2"
@@ -787,7 +820,7 @@ if [[ ! -s ${_arg_starting_target} ]]; then
       if [[ ${_arg_dry_run} == "off" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
           --walltime ${_arg_walltime_short} \
-          -N ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage \
+          --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage \
           ${_arg_job_predepend} \
           -- bash ${_arg_output_dir}/jobs/${__datetime}/initialaverage
       fi
@@ -822,7 +855,7 @@ if [[ ! -s ${_arg_starting_target} ]]; then
       if [[ ${_arg_dry_run} == "off" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
           --walltime ${_arg_walltime_short} \
-          -N ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_dumb \
+          --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_dumb \
           ${_arg_job_predepend} \
           -- bash ${_arg_output_dir}/jobs/${__datetime}/initialaverage_dumb
       fi
@@ -879,17 +912,17 @@ if [[ ! -s ${_arg_starting_target} ]]; then
       if [[ ${_arg_dry_run} == "off" ]]; then
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
           --walltime ${_arg_walltime_short} \
-          -N ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_reg_com \
+          --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_reg_com \
           ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_dumb \
           ${_arg_output_dir}/jobs/${__datetime}/initialaverage_reg_com
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
           --walltime ${_arg_walltime_short} \
-          -N ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_resample_com \
+          --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_resample_com \
           ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_reg_com \
           ${_arg_output_dir}/jobs/${__datetime}/initialaverage_resample_com
         qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
           --walltime ${_arg_walltime_short} \
-          -N ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_com \
+          --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_com \
           ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_initialaverage_resample_com \
           -- bash ${_arg_output_dir}/jobs/${__datetime}/initialaverage_com
       fi
@@ -1022,6 +1055,7 @@ for reg_type in "${_arg_stages[@]}"; do
             if [[ ${reg_type} =~ ^(rigid|similarity|affine)$ ]]; then
               # Linear stages of registration
               walltime_reg=${_arg_walltime_linear}
+              chunksize_reg=${_arg_chunksize_linear}
               echo antsRegistration_affine_SyN.sh --clobber \
                 ${_arg_float} ${_arg_fast} \
                 ${use_histogram} \
@@ -1039,6 +1073,7 @@ for reg_type in "${_arg_stages[@]}"; do
             elif [[ ${reg_type} == "nlin" ]]; then
               # Full regisration affine + nlin
               walltime_reg=${_arg_walltime_nonlinear}
+              chunksize_reg=${_arg_chunksize_nonlinear}
               echo antsRegistration_affine_SyN.sh --clobber \
                 ${_arg_float} ${_arg_fast} \
                 ${use_histogram} \
@@ -1149,14 +1184,16 @@ for reg_type in "${_arg_stages[@]}"; do
         if [[ ${_arg_dry_run} == "off" ]]; then
           qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
             --walltime ${walltime_reg} \
-            -N ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg \
+            ${chunksize_reg:+--chunksize ${chunksize_reg}} \
+            --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg \
             ${_arg_job_predepend} \
             ${last_round_job} \
             ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
           if [[ -s ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample ]]; then
             qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
               --walltime ${_arg_walltime_short} \
-              -N ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskresample \
+              ${_arg_chunksize_short:+--chunksize ${_arg_chunksize_short}} \
+              --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskresample \
               ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg* \
               --chunksize 0 \
               ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
@@ -1165,7 +1202,8 @@ for reg_type in "${_arg_stages[@]}"; do
           if [[ -s ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage ]]; then
             qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
               --walltime ${_arg_walltime_short} \
-              -N ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskaverage \
+              ${_arg_chunksize_short:+--chunksize ${_arg_chunksize_short}} \
+              --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskaverage \
               ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskresample* \
               -- bash ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
           fi
@@ -1341,7 +1379,9 @@ for reg_type in "${_arg_stages[@]}"; do
 
           if [[ ${_arg_dry_run} == "off" ]]; then
             qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
-              --walltime ${_arg_walltime_short} -N ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_shapeupdate \
+              --walltime ${_arg_walltime_short} \
+              ${_arg_chunksize_short:+--chunksize ${_arg_chunksize_short}} \
+              --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_shapeupdate \
               ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg \
               --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskaverage \
               -- bash ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
@@ -1407,12 +1447,11 @@ if [[ -s ${_arg_final_target} ]]; then
     debug "$(cat ${_arg_output_dir}/jobs/${__datetime}/final_target)"
 
     if [[ ${_arg_dry_run} == "off" ]]; then
-      # We use the walltime for a linear job here because its a single registration
       qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
-        --walltime ${_arg_walltime_linear} \
+        --walltime ${_arg_walltime_nonlinear} \
         ${_arg_job_predepend} \
         --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_$((i - 1))_shapeupdate \
-        -N ${_arg_jobname_prefix}modelbuild_${__datetime}_final_target \
+        --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_final_target \
         -- bash ${_arg_output_dir}/jobs/${__datetime}/final_target
     fi
   fi
