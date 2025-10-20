@@ -275,14 +275,16 @@ The two-level DBM wrapper takes the outputs from a `twolevel_modelbuild.sh` and 
 and subject-wise jacobian determinants for statistical analysis.
 
 ```bash
+$ twolevel_dbm.sh --help
 DBM post-processing for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction
-Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ...
+Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--target-space <SPACE>] [--(no-)debug] [--(no-)dry-run] <inputs> ...
         <inputs>: Input text files, one line per subject, comma separated scans per subject
         ... : Arguments to be passed to dbm.sh without validation
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
-        --jacobian-smooth: Comma separated list of smoothing gaussian FWHM, append "vox" for voxels, "mm" for millimeters (default: '4vox')
+        --jacobian-smooth: Comma separated list of smoothing Gaussian FWHMs, append "vox" for voxels, "mm" for millimeters (default: '4vox')
         --walltime: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
+        --target-space: Target space for DBM outputs, requires --final-target be used with modelbuild.sh. Can be one of: 'unbiased' and 'final-target' (default: 'unbiased')
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
 ```
