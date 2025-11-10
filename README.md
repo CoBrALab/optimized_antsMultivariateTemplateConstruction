@@ -21,6 +21,16 @@ Finally, support scripts are provided to take advantage of the co-registration
 performed by template construction for moving labels and quantitative maps
 to/from subject and common space.
 
+## Citing this software
+
+If you use this sofware in your research, please refer to this repository along with:
+```
+Germann, J., Gouveia, F. V., Chakravarty, M. M. & Devenyi, G. A.
+Longitudinal deformation-based morphometry pipeline to study neuroanatomical differences in structural MRI based on SyN unbiased templates.
+Aperture Neuro 5, (2025).
+http://dx.doi.org/10.52294/001c.133510
+```
+
 ## How does this all work?
 
 The ANTs unbiased model/template building method consists of the **iterative** application
