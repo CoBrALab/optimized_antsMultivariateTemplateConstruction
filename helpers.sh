@@ -141,4 +141,4 @@ function preflight_check() {
 }
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[${__b3bp_tmp_source_idx:-0}]}")" && pwd)"
-export PATH=${__dir}/minc-toolkit-extras:${PATH}
+export PATH=${__dir}/antsRegistration_affine_SyN:${PATH}
