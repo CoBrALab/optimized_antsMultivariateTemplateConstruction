@@ -21,9 +21,7 @@
 # Argbash is a bash code generator used to get arguments parsing right.
 # Argbash is FREE SOFTWARE, see https://argbash.dev for more info
 
-
-die()
-{
+die() {
   local _ret="${2:-1}"
   test "${_PRINT_HELP:-no}" = yes && print_help >&2
   echo "$1" >&2
@@ -32,19 +30,15 @@ die()
 
 # validators
 
-spacegroup()
-{
-	local _allowed=("unbiased" "final-target") _seeking="$1"
-	for element in "${_allowed[@]}"
-	do
-		test "$element" = "$_seeking" && echo "$element" && return 0
-	done
-	die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'unbiased' and 'final-target'" 4
+spacegroup() {
+  local _allowed=("unbiased" "final-target") _seeking="$1"
+  for element in "${_allowed[@]}"; do
+    test "$element" = "$_seeking" && echo "$element" && return 0
+  done
+  die "Value '$_seeking' (of argument '$2') doesn't match the list of allowed values: 'unbiased' and 'final-target'" 4
 }
 
-
-begins_with_short_option()
-{
+begins_with_short_option() {
   local first_option all_short_options='h'
   first_option="${1:0:1}"
   test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
@@ -52,7 +46,7 @@ begins_with_short_option()
 
 # THE DEFAULTS INITIALIZATION - POSITIONALS
 _positionals=()
-_arg_inputs=('' )
+_arg_inputs=('')
 # THE DEFAULTS INITIALIZATION - OPTIONALS
 _arg_output_dir="output"
 _arg_float="off"
@@ -67,9 +61,7 @@ _arg_debug="off"
 _arg_dry_run="off"
 _arg_jobname_prefix=
 
-
-print_help()
-{
+print_help() {
   printf '%s\n' "DBM post-processing for modelbuild.sh from optimized_antsMultivariateTemplateConstruction"
   printf 'Usage: %s [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [--target-space <SPACE>] [--delin-affine-ratio <arg>] [--(no-)use-geometric] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)block] [--(no-)debug] [--(no-)dry-run] [--jobname-prefix <arg>] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...\n' "$0"
   printf '\t%s\n' "<inputs>: Input text files, one line per input, one file per spectra"
@@ -88,129 +80,120 @@ print_help()
   printf '\t%s\n' "--jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)"
 }
 
-
-parse_commandline()
-{
+parse_commandline() {
   _positionals_count=0
-  while test $# -gt 0
-  do
+  while test $# -gt 0; do
     _key="$1"
     case "$_key" in
-      -h|--help)
-        print_help
-        exit 0
-        ;;
-      -h*)
-        print_help
-        exit 0
-        ;;
-      --output-dir)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_output_dir="$2"
-        shift
-        ;;
-      --output-dir=*)
-        _arg_output_dir="${_key##--output-dir=}"
-        ;;
-      --no-float|--float)
-        _arg_float="on"
-        test "${1:0:5}" = "--no-" && _arg_float="off"
-        ;;
-      --mask)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_mask="$2"
-        shift
-        ;;
-      --mask=*)
-        _arg_mask="${_key##--mask=}"
-        ;;
-      --target-space)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_target_space="$(spacegroup "$2" "target-space")" || exit 1
-        shift
-        ;;
-      --target-space=*)
-        _arg_target_space="$(spacegroup "${_key##--target-space=}" "target-space")" || exit 1
-        ;;
-      --delin-affine-ratio)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_delin_affine_ratio="$2"
-        shift
-        ;;
-      --delin-affine-ratio=*)
-        _arg_delin_affine_ratio="${_key##--delin-affine-ratio=}"
-        ;;
-      --no-use-geometric|--use-geometric)
-        _arg_use_geometric="on"
-        test "${1:0:5}" = "--no-" && _arg_use_geometric="off"
-        ;;
-      --jacobian-smooth)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_jacobian_smooth="$2"
-        shift
-        ;;
-      --jacobian-smooth=*)
-        _arg_jacobian_smooth="${_key##--jacobian-smooth=}"
-        ;;
-      --walltime)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_walltime="$2"
-        shift
-        ;;
-      --walltime=*)
-        _arg_walltime="${_key##--walltime=}"
-        ;;
-      --no-block|--block)
-        _arg_block="on"
-        test "${1:0:5}" = "--no-" && _arg_block="off"
-        ;;
-      --no-debug|--debug)
-        _arg_debug="on"
-        test "${1:0:5}" = "--no-" && _arg_debug="off"
-        ;;
-      --no-dry-run|--dry-run)
-        _arg_dry_run="on"
-        test "${1:0:5}" = "--no-" && _arg_dry_run="off"
-        ;;
-      --jobname-prefix)
-        test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
-        _arg_jobname_prefix="$2"
-        shift
-        ;;
-      --jobname-prefix=*)
-        _arg_jobname_prefix="${_key##--jobname-prefix=}"
-        ;;
-      *)
-        _last_positional="$1"
-        _positionals+=("$_last_positional")
-        _positionals_count=$((_positionals_count + 1))
-        ;;
+    -h | --help)
+      print_help
+      exit 0
+      ;;
+    -h*)
+      print_help
+      exit 0
+      ;;
+    --output-dir)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_output_dir="$2"
+      shift
+      ;;
+    --output-dir=*)
+      _arg_output_dir="${_key##--output-dir=}"
+      ;;
+    --no-float | --float)
+      _arg_float="on"
+      test "${1:0:5}" = "--no-" && _arg_float="off"
+      ;;
+    --mask)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_mask="$2"
+      shift
+      ;;
+    --mask=*)
+      _arg_mask="${_key##--mask=}"
+      ;;
+    --target-space)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_target_space="$(spacegroup "$2" "target-space")" || exit 1
+      shift
+      ;;
+    --target-space=*)
+      _arg_target_space="$(spacegroup "${_key##--target-space=}" "target-space")" || exit 1
+      ;;
+    --delin-affine-ratio)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_delin_affine_ratio="$2"
+      shift
+      ;;
+    --delin-affine-ratio=*)
+      _arg_delin_affine_ratio="${_key##--delin-affine-ratio=}"
+      ;;
+    --no-use-geometric | --use-geometric)
+      _arg_use_geometric="on"
+      test "${1:0:5}" = "--no-" && _arg_use_geometric="off"
+      ;;
+    --jacobian-smooth)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_jacobian_smooth="$2"
+      shift
+      ;;
+    --jacobian-smooth=*)
+      _arg_jacobian_smooth="${_key##--jacobian-smooth=}"
+      ;;
+    --walltime)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_walltime="$2"
+      shift
+      ;;
+    --walltime=*)
+      _arg_walltime="${_key##--walltime=}"
+      ;;
+    --no-block | --block)
+      _arg_block="on"
+      test "${1:0:5}" = "--no-" && _arg_block="off"
+      ;;
+    --no-debug | --debug)
+      _arg_debug="on"
+      test "${1:0:5}" = "--no-" && _arg_debug="off"
+      ;;
+    --no-dry-run | --dry-run)
+      _arg_dry_run="on"
+      test "${1:0:5}" = "--no-" && _arg_dry_run="off"
+      ;;
+    --jobname-prefix)
+      test $# -lt 2 && die "Missing value for the optional argument '$_key'." 1
+      _arg_jobname_prefix="$2"
+      shift
+      ;;
+    --jobname-prefix=*)
+      _arg_jobname_prefix="${_key##--jobname-prefix=}"
+      ;;
+    *)
+      _last_positional="$1"
+      _positionals+=("$_last_positional")
+      _positionals_count=$((_positionals_count + 1))
+      ;;
     esac
     shift
   done
 }
 
-
-handle_passed_args_count()
-{
+handle_passed_args_count() {
   local _required_args_string="'inputs'"
   test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
 }
 
-
-assign_positional_args()
-{
+assign_positional_args() {
   local _positional_name _shift_for=$1
   _positional_names="_arg_inputs "
   _our_args=$((${#_positionals[@]} - 1))
-  for ((ii = 0; ii < _our_args; ii++))
-  do
+  for ((ii = 0; ii < _our_args; ii++)); do
     _positional_names="$_positional_names _arg_inputs[$((ii + 1))]"
   done
 
   shift "$_shift_for"
-  for _positional_name in ${_positional_names}
-  do
+  for _positional_name in ${_positional_names}; do
     test $# -gt 0 || break
     eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an Argbash bug." 1
     shift
@@ -223,7 +206,6 @@ assign_positional_args 1 "${_positionals[@]}"
 
 # OTHER STUFF GENERATED BY Argbash
 # Validation of values
-
 
 ### END OF CODE GENERATED BY Argbash (sortof) ### ])
 # [ <-- needed because of Argbash
@@ -289,9 +271,9 @@ IFS=',' read -r -a _arg_jacobian_smooth <<<${_arg_jacobian_smooth}
 preflight_check
 
 # Make output directories
-mkdir -p ${_arg_output_dir}/dbm/intermediate/delin/{affine,warp,jacobian}
+mkdir -p ${_arg_output_dir}/dbm/intermediate/delin/{affine,jacobian}
 mkdir -p ${_arg_output_dir}/dbm/intermediate/nlin/jacobian
-mkdir -p ${_arg_output_dir}/dbm/intermediate/affine/{warp,jacobian}
+mkdir -p ${_arg_output_dir}/dbm/intermediate/affine/jacobian
 mkdir -p ${_arg_output_dir}/dbm/jacobian/{final-target,}/{relative,full}//smooth
 
 # Convert geometric option to ANTs option
@@ -325,33 +307,16 @@ if [[ ${_arg_dry_run} == "off" ]]; then
     ${_arg_output_dir}/dbm/jobs/${__datetime}/nlin_jacobian
 fi
 
-# Generate warp field from affine transform
-info "Computing warp fields from affine transforms"
-for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
-      -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
-      -o [ ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
-  fi
-done >${_arg_output_dir}/dbm/jobs/${__datetime}/affine_warp
-
-debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/affine_warp)"
-if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
-    --walltime ${_arg_walltime} \
-    -N ${_arg_jobname_prefix}dbm_${__datetime}_affine_warp \
-    ${_arg_output_dir}/dbm/jobs/${__datetime}/affine_warp
-fi
-
 # Generate jacobian from affine warp field
 # Log, values > 0, voxel expands towards subject (i.e. subject voxel is larger)
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
-info "Computing Jacobians from affine warp fields"
+info "Computing Jacobians from affines"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).txt ]]; then
+    echo "antsTransformInfo ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
+        | grep Determinant \
+        | awk '{print log(\$2)}' \
+        > ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).txt"
   fi
 done >${_arg_output_dir}/dbm/jobs/${__datetime}/affine_jacobian
 
@@ -360,7 +325,6 @@ if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${__datetime}_affine_jacobian \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_affine_warp \
     ${_arg_output_dir}/dbm/jobs/${__datetime}/affine_jacobian
 fi
 
@@ -410,42 +374,24 @@ if [[ ${_arg_dry_run} == "off" ]]; then
     ${_arg_output_dir}/dbm/jobs/${__datetime}/delin_affine_from_warp
 fi
 
-# Generate warp from delin affine
-info "Generate composite warp field from delin affine"
-for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
-      -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t [ ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat,1 ] \
-      -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
-  fi
-done >${_arg_output_dir}/dbm/jobs/${__datetime}/delin_warp_from_delin_affine
-
-debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/delin_warp_from_delin_affine)"
-if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
-    --walltime ${_arg_walltime} \
-    -N ${_arg_jobname_prefix}dbm_${__datetime}_delin_warp_from_delin_affine \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_delin_affine_from_warp \
-    ${_arg_output_dir}/dbm/jobs/${__datetime}/delin_warp_from_delin_affine
-fi
-
-# Generate jacobians from delin warp field
+# Generate jacobians from delin affine
 info "Computing Jacobians from delin affine warp fields"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).txt ]]; then
+    echo "antsTransformInfo ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat \
+        | grep Determinant \
+        | awk '{print log(\$2)}' \
+        > ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).txt"
   fi
-done >${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_warp
+done >${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_affine
 
-debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_warp)"
+debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_affine)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
     --walltime ${_arg_walltime} \
-    -N ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_warp \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_delin_warp_from_delin_affine \
-    ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_warp
+    -N ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_affine \
+    --depend ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_affine \
+    ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_affine
 fi
 
 # Generate final full jacobians
@@ -454,8 +400,8 @@ for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
       ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz \
-      + ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
+      + ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz \
+        $(cat ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).txt)"
   fi
 done >${_arg_output_dir}/dbm/jobs/${__datetime}/gen_full_jacobian
 
@@ -475,8 +421,8 @@ for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
       ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz \
-      + ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
+      - ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz \
+        $(cat ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).txt)"
   fi
 done >${_arg_output_dir}/dbm/jobs/${__datetime}/gen_rel_jacobian
 
@@ -486,7 +432,7 @@ if [[ ${_arg_dry_run} == "off" ]]; then
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${__datetime}_gen_rel_jacobian \
     --depend ${_arg_jobname_prefix}dbm_${__datetime}_nlin_jacobian \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_warp \
+    --depend ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_affine \
     ${_arg_output_dir}/dbm/jobs/${__datetime}/gen_rel_jacobian
 fi
 
@@ -538,11 +484,11 @@ if [[ ${_arg_target_space} == "final-target" ]]; then
   debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/resample_jacobians_final_target)"
   if [[ ${_arg_dry_run} == "off" ]]; then
     qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
-    --walltime ${_arg_walltime} \
-    -N ${_arg_jobname_prefix}dbm_${__datetime}_resample_jacobians_final_target \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_gen_rel_jacobian \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_gen_full_jacobian \
-    ${_arg_output_dir}/dbm/jobs/${__datetime}/resample_jacobians_final_target
+      --walltime ${_arg_walltime} \
+      -N ${_arg_jobname_prefix}dbm_${__datetime}_resample_jacobians_final_target \
+      --depend ${_arg_jobname_prefix}dbm_${__datetime}_gen_rel_jacobian \
+      --depend ${_arg_jobname_prefix}dbm_${__datetime}_gen_full_jacobian \
+      ${_arg_output_dir}/dbm/jobs/${__datetime}/resample_jacobians_final_target
   fi
 fi
 
@@ -587,6 +533,5 @@ if [[ ${_arg_dry_run} == "off" ]]; then
     --depend ${_arg_jobname_prefix}dbm_${__datetime}_resample_jacobians_final_target \
     ${_arg_output_dir}/dbm/jobs/${__datetime}/smooth_jacobian
 fi
-
 
 # ] <-- needed because of Argbash
