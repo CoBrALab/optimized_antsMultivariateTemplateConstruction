@@ -338,7 +338,7 @@ if [[ ${_arg_resample_input_space} == "final-target" ]]; then
   if [[ -s ${inversewarp_to_final_target} ]]; then
     final_target_transforms="-t [${_arg_output_dir}/final-target/to_target_0GenericAffine.mat,1] -t ${inversewarp_to_final_target} "
   else
-    fatal "Final target transform ${inversewarp_to_final_target} not found"
+    failure "Final target transform ${inversewarp_to_final_target} not found"
   fi
   output_folder_prefix="subject"
 elif [[ ${_arg_resample_input_space} == "unbiased" ]]; then

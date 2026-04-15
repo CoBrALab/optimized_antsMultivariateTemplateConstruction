@@ -335,7 +335,7 @@ elif [[ ${_arg_target_space} == "final-target" ]]; then
     final_target_transforms="-t ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz -t ${_arg_output_dir}/final-target/to_target_0GenericAffine.mat"
     real_outputdir="${_arg_output_dir}/commonspace-resampled/final-target"
   else
-    fatal "Final target transform ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz not found"
+    failure "Final target transform ${_arg_output_dir}/final-target/to_target_1Warp.nii.gz not found"
   fi
 elif [[ ${_arg_target_space} == "secondlevel" ]]; then
   IFS=',' read -r -a _arg_append_transforms <<<${_arg_append_transforms}
