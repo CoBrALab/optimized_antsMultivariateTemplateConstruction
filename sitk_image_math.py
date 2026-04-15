@@ -55,7 +55,7 @@ def unbiased_std(n, var):
 
 def get_file_extension(file_name, method_type: str):
     file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
-    # check what type of file exntension the user provided
+    # check what type of file extension the user provided
     file_extension = [
         ext for ext in file_extensions if file_name.endswith(ext)][0]
     # split based on the extension type

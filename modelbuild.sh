@@ -960,7 +960,7 @@ fi
 
 walltime_reg=${_arg_walltime_linear}
 
-#Convert comma-seperated options into array
+#Convert comma-separated options into array
 IFS=',' read -r -a _arg_stages <<<${_arg_stages}
 
 #Read gradient schedule into array

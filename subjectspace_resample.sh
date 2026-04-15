@@ -282,7 +282,7 @@ echo ${__invocation} >${_arg_output_dir}/jobs/${__datetime}/invocation
 
 info "Checking input files"
 
-# Set target space to modelbuild indputs if empty
+# Set target space to modelbuild inputs if empty
 if [ -z "$_arg_target_space" ]; then
   _arg_target_space=${_arg_inputs}
 fi
