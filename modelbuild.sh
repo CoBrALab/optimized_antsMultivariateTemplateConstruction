@@ -38,7 +38,7 @@
 # ARG_OPTIONAL_BOOLEAN([scale-affines],[],[Apply gradient step scaling factor to average affine during shape update step, requires python with VTK and SimpleITK],[])
 # ARG_OPTIONAL_BOOLEAN([rigid-update],[],[Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation)],[])
 
-# ARG_OPTIONAL_SINGLE([sharpen-type],[],[Type of sharpening applied to average during modelbuild],[unsharp])
+# ARG_OPTIONAL_SINGLE([sharpen-type],[],[Type of sharpening applied to average during modelbuild],[laplacian])
 # ARG_TYPE_GROUP_SET([sharptypetype],[SHARPEN],[sharpen-type],[none,laplacian,unsharp])
 
 # ARG_OPTIONAL_SINGLE([masks],[],[File containing mask filenames, one file per line],[])
@@ -155,7 +155,7 @@ _arg_nlin_shape_update="on"
 _arg_affine_shape_update="on"
 _arg_scale_affines="off"
 _arg_rigid_update="off"
-_arg_sharpen_type="unsharp"
+_arg_sharpen_type="laplacian"
 _arg_masks=
 _arg_mask_extract="off"
 _arg_mask_merge_threshold="0.5"
@@ -212,7 +212,7 @@ print_help()
   printf '\t%s\n' "--affine-shape-update, --no-affine-shape-update: Scale template by inverse of average affine transforms during shape update step (on by default)"
   printf '\t%s\n' "--scale-affines, --no-scale-affines: Apply gradient step scaling factor to average affine during shape update step, requires python with VTK and SimpleITK (off by default)"
   printf '\t%s\n' "--rigid-update, --no-rigid-update: Include rigid component of transform when performing shape update on template (disable if template drifts in translation or orientation) (off by default)"
-  printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'unsharp')"
+  printf '\t%s\n' "--sharpen-type: Type of sharpening applied to average during modelbuild. Can be one of: 'none', 'laplacian' and 'unsharp' (default: 'laplacian')"
   printf '\t%s\n' "--masks: File containing mask filenames, one file per line (no default)"
   printf '\t%s\n' "--mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)"
   printf '\t%s\n' "--mask-merge-threshold: Threshold to combine masks during averaging (default: '0.5')"
@@ -1225,8 +1225,8 @@ for reg_type in "${_arg_stages[@]}"; do
           case ${_arg_sharpen_type} in
           laplacian)
             echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
-              Sharpen ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
-              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate 0
+              Sharpen ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz 0 \
+              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
             ;;
           unsharp)
             echo ImageMath 3 ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen.nii.gz \
