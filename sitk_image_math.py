@@ -51,7 +51,7 @@ def unbiased_std(n, var):
     - unbiased estimate of the population standard deviation
     """
     c_4 = 1 - (1 / (4 * (n))) - (7 / (32 * (n**2))) - (19 / (128 * (n**3)))
-    return var / c_4
+    return np.sqrt(var) / c_4
 
 def get_file_extension(file_name, method_type: str):
     file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
