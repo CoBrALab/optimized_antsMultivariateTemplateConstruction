@@ -23,14 +23,14 @@ def itk_to_homogeneous_matrix(itk_transform):
 
     return M
 
-def homogenous_matrix_to_itk(M):
+def homogeneous_matrix_to_itk(M):
     return sitk.AffineTransform(
             M[0:3, 0:3].flatten(),
             M[0:3, 3].flatten(),
             (0, 0, 0),
         )
 
-def homogenous_matrix_to_rotation_scaleshear(M):
+def homogeneous_matrix_to_rotation_scaleshear(M):
     # Decompose M transform in R*D transform, return both
     C = np.zeros((3,3))
     C = M[0:3, 0:3]
@@ -118,14 +118,14 @@ if __name__ == "__main__":
 
     if opts.no_rotation or opts.no_rigid:
         # Get the D matrix which has no rotation
-        _, D = homogenous_matrix_to_rotation_scaleshear(average_matrix)
+        _, D = homogeneous_matrix_to_rotation_scaleshear(average_matrix)
         average_matrix[0:3, 0:3] = D
 
     if opts.no_translation or opts.no_rigid:
         # Zero out the translation components
         average_matrix[0:3, 3] = (0,0,0)
 
-    output_average_transform = homogenous_matrix_to_itk(average_matrix)
+    output_average_transform = homogeneous_matrix_to_itk(average_matrix)
     output_average_transform.SetFixedParameters(sitk.ReadTransform(opts.file_list[0]).GetFixedParameters())
 
     sitk.WriteTransform(output_average_transform, opts.output)

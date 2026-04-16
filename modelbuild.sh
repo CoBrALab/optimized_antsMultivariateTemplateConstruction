@@ -634,7 +634,7 @@ __base="$(basename "${__file}" .sh)"
 # shellcheck disable=SC2034,SC2015
 __invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
 
-# Prefight check for required programs
+# Preflight check for required programs
 preflight_check
 
 # Setup a directory which contains all commands run
@@ -693,7 +693,7 @@ fi
 target_mask=${_arg_starting_target_mask}
 
 if [[ -n ${target_mask} && ! -s ${target_mask} ]]; then
-  failure "Starting target mask ${target_mask} is non-existant or zero size"
+  failure "Starting target mask ${target_mask} is non-existent or zero size"
 fi
 
 # Enable fast mode in antsRegistration_affine_SyN.sh
@@ -950,7 +950,7 @@ else
   else
     info "Checking starting target"
     if [[ ! -s ${_arg_starting_target} ]]; then
-      failure "Starting target ${_arg_starting_target} is non-existant or zero size"
+      failure "Starting target ${_arg_starting_target} is non-existent or zero size"
     fi
     cp -f ${_arg_starting_target} ${_arg_output_dir}/initialtarget.nii.gz
   fi
@@ -1071,7 +1071,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
                 >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
             elif [[ ${reg_type} == "nlin" ]]; then
-              # Full regisration affine + nlin
+              # Full registration affine + nlin
               walltime_reg=${_arg_walltime_nonlinear}
               chunksize_reg=${_arg_chunksize_nonlinear}
               echo antsRegistration_affine_SyN.sh --clobber \

@@ -224,7 +224,7 @@ if [[ ${_arg_debug} == "off" ]]; then
   unset _arg_debug
 fi
 
-# Prefight check for required programs
+# Preflight check for required programs
 preflight_check
 
 # Check for mask and file provided together

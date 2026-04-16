@@ -25,14 +25,14 @@ def itk_to_homogeneous_matrix(itk_transform):
 
     return M
 
-def homogenous_matrix_to_itk(M):
+def homogeneous_matrix_to_itk(M):
     return sitk.AffineTransform(
             M[0:3, 0:3].flatten(),
             M[0:3, 3].flatten(),
             (0, 0, 0),
         )
 
-def vtk_to_homogenous_matrix(vtk_transform):
+def vtk_to_homogeneous_matrix(vtk_transform):
     M = np.eye(4)
     vtk_matrix = vtk_transform.GetMatrix()
     vtk_matrix.DeepCopy(M.ravel(), vtk_matrix)
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         "input_transform",
         type=str,
         help="""
-            Name of output scaled transform.
+            Name of input transform.
             """,
     )
     parser.add_argument(
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         opts.scale_factor, output_vtk_transform
     )
 
-    output_itk_transform = homogenous_matrix_to_itk(vtk_to_homogenous_matrix(output_vtk_transform))
+    output_itk_transform = homogeneous_matrix_to_itk(vtk_to_homogeneous_matrix(output_vtk_transform))
     output_itk_transform.SetFixedParameters(input_itk_transform.GetFixedParameters())
 
     sitk.WriteTransform(output_itk_transform, opts.output_transform)
