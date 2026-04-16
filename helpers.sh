@@ -128,7 +128,7 @@ function extension_strip() {
 }
 
 function preflight_check() {
-  # Prefight check for required programs
+  # Preflight check for required programs
   for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \
     ThresholdImage ExtractRegionFromImageByMask antsAI ConvertImage \
     antsApplyTransforms AverageAffineTransform AverageAffineTransformNoRigid \

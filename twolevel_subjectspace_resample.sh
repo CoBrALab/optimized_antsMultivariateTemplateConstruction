@@ -216,7 +216,7 @@ if [[ ${_arg_debug} == "off" ]]; then
   unset _arg_debug
 fi
 
-# Prefight check for required programs
+# Preflight check for required programs
 preflight_check
 
 # Setup a directory which contains all commands run
@@ -238,7 +238,7 @@ elif [[ ${_arg_resample_input_space} == "final-target" ]]; then
   if [[ -s ${inversewarp_to_final_target} ]]; then
     final_target_transforms="-t [${_arg_output_dir}/secondlevel/final-target/to_target_0GenericAffine.mat,1] -t ${inversewarp_to_final_target}"
   else
-    fatal "Final target transform ${inversewarp_to_final_target} not found"
+    failure "Final target transform ${inversewarp_to_final_target} not found"
   fi
 fi
 

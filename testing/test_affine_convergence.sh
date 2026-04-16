@@ -1,5 +1,5 @@
 #!/bin/bash
-# Loop over similarity and affine transform transforms for input population
+# Loop over similarity and affine transforms for input population
 # and compute the mean determinant
 # For enough iterations, determinant should average to 1
 
