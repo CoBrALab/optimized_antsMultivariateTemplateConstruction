@@ -354,7 +354,29 @@ if __name__ == "__main__":
         average_img.CopyInformation(inputRefImage)
         sitk.WriteImage(average_img, opts.output)
     elif image_type=='timeseries':
-        average_img = sitk.GetImageFromArray(average, isVector=False)
-        # Copy the image metadata from an the first extracted slice of the first image
-        average_img.CopyInformation(sitk.Extract(inputRefImage, inputRefImage.GetSize()[0:3] + tuple([0]), directionCollapseToStrategy=sitk.ExtractImageFilter.DIRECTIONCOLLAPSETOSUBMATRIX))
-        sitk.WriteImage(average_img, opts.output)
+        # Copy the image metadata from the first extracted slice of the first image
+        timeseriesRef = sitk.Extract(inputRefImage, inputRefImage.GetSize()[0:3] + tuple([0]), directionCollapseToStrategy=sitk.ExtractImageFilter.DIRECTIONCOLLAPSETOSUBMATRIX)
+        if opts.method in ['var', 'std']:
+            # save the var or std image
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, opts.output)
+            # save the mean image alongside
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, get_file_extension(opts.output, '_mean'))
+        elif opts.method == 'mean':
+            # save the mean image
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, opts.output)
+            # save the var image alongside
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, get_file_extension(opts.output, '_var'))
+        else:
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, opts.output)
