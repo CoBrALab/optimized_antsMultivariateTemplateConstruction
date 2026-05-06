@@ -269,7 +269,7 @@ if [[ ${_arg_debug} == "off" ]]; then
   unset _arg_debug
 fi
 
-# Prefight check for required programs
+# Preflight check for required programs
 preflight_check
 
 # Setup a directory which contains all commands run
@@ -282,7 +282,7 @@ echo ${__invocation} >${_arg_output_dir}/jobs/${__datetime}/invocation
 
 info "Checking input files"
 
-# Set target space to modelbuild indputs if empty
+# Set target space to modelbuild inputs if empty
 if [ -z "$_arg_target_space" ]; then
   _arg_target_space=${_arg_inputs}
 fi
@@ -338,7 +338,7 @@ if [[ ${_arg_resample_input_space} == "final-target" ]]; then
   if [[ -s ${inversewarp_to_final_target} ]]; then
     final_target_transforms="-t [${_arg_output_dir}/final-target/to_target_0GenericAffine.mat,1] -t ${inversewarp_to_final_target} "
   else
-    fatal "Final target transform ${inversewarp_to_final_target} not found"
+    failure "Final target transform ${inversewarp_to_final_target} not found"
   fi
   output_folder_prefix="subject"
 elif [[ ${_arg_resample_input_space} == "unbiased" ]]; then

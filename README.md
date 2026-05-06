@@ -23,7 +23,7 @@ to/from subject and common space.
 
 ## Citing this software
 
-If you use this sofware in your research, please refer to this repository along with:
+If you use this software in your research, please refer to this repository along with:
 ```
 Germann, J., Gouveia, F. V., Chakravarty, M. M. & Devenyi, G. A.
 Longitudinal deformation-based morphometry pipeline to study neuroanatomical differences in structural MRI based on SyN unbiased templates.
@@ -322,7 +322,7 @@ within-subject changes aligned at the population level.**
 labels between the input subject space and the common template space.
 
 These helper scripts can accept affine transforms which define the pre-alignment between the inputs to be resampled
-and the files used during template construction, othterwise, inputs are presumed to be already aligned in the space.
+and the files used during template construction, otherwise, inputs are presumed to be already aligned in the space.
 
 Common uses:
 

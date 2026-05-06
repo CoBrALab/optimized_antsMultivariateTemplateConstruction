@@ -241,7 +241,7 @@ __base="$(basename "${__file}" .sh)"
 # shellcheck disable=SC2034,SC2015
 __invocation="$(printf %q "${__file}")$( (($#)) && printf ' %q' "$@" || true)"
 
-# Prefight check for required programs
+# Preflight check for required programs
 preflight_check
 
 # Setup a directory which contains all commands run
@@ -285,7 +285,7 @@ fi
 # Convert smoothing jacobians to a list
 IFS=',' read -r -a _arg_jacobian_smooth <<<${_arg_jacobian_smooth}
 
-# Prefight check for required programs
+# Preflight check for required programs
 preflight_check
 
 # Make output directories
