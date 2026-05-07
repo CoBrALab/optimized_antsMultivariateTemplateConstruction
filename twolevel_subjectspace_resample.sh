@@ -247,9 +247,11 @@ i=1
 while read -r subject_scans; do
   mkdir -p ${_arg_output_dir}/subjectspace-resampled/subject_${i}
   IFS=',' read -r -a scans <<<${subject_scans}
+  filter_empty scans
   # Save append-transforms for individual subjects
   if [[ -n ${_arg_append_transforms} ]]; then
     IFS=',' read -r -a transforms <<< $(sed "${i}q;d" ${_arg_append_transforms})
+    filter_empty transforms
     append_transforms="--append-transforms ${_arg_output_dir}/subjectspace-resampled/subject_${i}/append_transforms.txt"
     printf "%s\n" "${transforms[@]}" > ${_arg_output_dir}/subjectspace-resampled/subject_${i}/append_transforms.txt
   else
@@ -260,6 +262,7 @@ while read -r subject_scans; do
   temp_target_space_file="${_arg_output_dir}/subjectspace-resampled/subject_${i}/target_space.txt"
   if [[ -n ${_arg_target_space} ]]; then
     IFS=',' read -r -a target_space <<< $(sed "${i}q;d" ${_arg_target_space})
+    filter_empty target_space
     target_space_cmd="--target-space ${temp_target_space_file}"
     printf "%s\n" "${target_space[@]}" > ${temp_target_space_file}
   else

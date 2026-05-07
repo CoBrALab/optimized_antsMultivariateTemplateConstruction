@@ -233,6 +233,7 @@ i=1
 while read -r subject_scans; do
 
   IFS=',' read -r -a scans <<<${subject_scans}
+  filter_empty scans
   if [[ $(wc -l < ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt) -gt 1 ]]; then
     debug "${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --jobname-prefix "dbm_twolevel_${__datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
     if [[ ${_arg_dry_run} == "off" ]]; then

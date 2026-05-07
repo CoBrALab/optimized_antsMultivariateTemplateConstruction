@@ -127,6 +127,17 @@ function extension_strip() {
   sed -r 's/(.nii$|.nii.gz|.nrrd|.mnc|.mnc.gz)$//'
 }
 
+function filter_empty() {
+  # Remove empty elements from a named array (in place).
+  # Usage: filter_empty <array_name>
+  local -n __arr=$1
+  local __filtered=() __elem
+  for __elem in "${__arr[@]}"; do
+    [[ -n ${__elem} ]] && __filtered+=("${__elem}")
+  done
+  __arr=("${__filtered[@]}")
+}
+
 function preflight_check() {
   # Preflight check for required programs
   for program in AverageImages ImageSetStatistics ResampleImage qbatch ImageMath \

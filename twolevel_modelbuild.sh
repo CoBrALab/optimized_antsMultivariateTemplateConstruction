@@ -252,6 +252,7 @@ info "Launching modelbuilds for each input row"
 i=1
 while read -r subject_scans; do
   IFS=',' read -r -a scans <<<${subject_scans}
+  filter_empty scans
   mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}
   ln -sfr ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz
   printf "%s\n" ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/input_files.txt
@@ -259,6 +260,7 @@ while read -r subject_scans; do
 
   if [[ -n ${_arg_masks} ]]; then
     IFS=',' read -r -a masks <<<$(sed "${i}q;d" ${_arg_masks})
+    filter_empty masks
     ln -sfr ${_arg_output_dir}/firstlevel/subject_${i}/final/average/mask_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/masks/subject_${i}.nii.gz
     printf "%s\n" ${_arg_output_dir}/secondlevel/masks/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/mask_files.txt
     printf "%s\n" "${masks[@]}" > ${_arg_output_dir}/firstlevel/subject_${i}/mask_files.txt
