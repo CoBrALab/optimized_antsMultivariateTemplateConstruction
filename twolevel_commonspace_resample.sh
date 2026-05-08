@@ -192,6 +192,16 @@ echo ${__invocation} >${_arg_output_dir}/secondlevel/jobs/${__datetime}/invocati
 
 mkdir -p ${_arg_output_dir}/secondlevel/commonspace-resampled
 
+# Validate row counts of paired CSV files match the primary inputs file so
+# trailing subjects don't silently end up with empty lookups via sed.
+inputs_lines=$(wc -l < ${_arg_inputs})
+resample_inputs_lines=$(wc -l < ${_arg_resample_inputs})
+[[ ${resample_inputs_lines} -ne ${inputs_lines} ]] && failure "--resample-inputs ${_arg_resample_inputs} has ${resample_inputs_lines} rows, expected ${inputs_lines} to match --inputs"
+if [[ -n ${_arg_prepend_transforms} ]]; then
+  prepend_transforms_lines=$(wc -l < ${_arg_prepend_transforms})
+  [[ ${prepend_transforms_lines} -ne ${inputs_lines} ]] && failure "--prepend-transforms ${_arg_prepend_transforms} has ${prepend_transforms_lines} rows, expected ${inputs_lines} to match --inputs"
+fi
+
 info "Processing Two-Level Common Resampling"
 i=1
 while read -r subject_scans; do
