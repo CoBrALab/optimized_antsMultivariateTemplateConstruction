@@ -253,6 +253,7 @@ i=1
 while read -r subject_scans; do
   IFS=',' read -r -a scans <<<${subject_scans}
   filter_empty scans
+  [[ ${#scans[@]} -eq 0 ]] && failure "Subject ${i}: input row contains no valid scan paths after filtering empty fields"
   mkdir -p ${_arg_output_dir}/firstlevel/subject_${i}
   ln -sfr ${_arg_output_dir}/firstlevel/subject_${i}/final/average/template_sharpen_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz
   printf "%s\n" ${_arg_output_dir}/secondlevel/inputs/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/input_files.txt
@@ -261,6 +262,8 @@ while read -r subject_scans; do
   if [[ -n ${_arg_masks} ]]; then
     IFS=',' read -r -a masks <<<$(sed "${i}q;d" ${_arg_masks})
     filter_empty masks
+    [[ ${#masks[@]} -eq 0 ]] && failure "Subject ${i}: mask input row contains no valid mask paths after filtering empty fields"
+    [[ ${#masks[@]} -ne ${#scans[@]} ]] && failure "Subject ${i}: number of masks (${#masks[@]}) does not match number of scans (${#scans[@]})"
     ln -sfr ${_arg_output_dir}/firstlevel/subject_${i}/final/average/mask_shapeupdate.nii.gz ${_arg_output_dir}/secondlevel/masks/subject_${i}.nii.gz
     printf "%s\n" ${_arg_output_dir}/secondlevel/masks/subject_${i}.nii.gz >> ${_arg_output_dir}/secondlevel/mask_files.txt
     printf "%s\n" "${masks[@]}" > ${_arg_output_dir}/firstlevel/subject_${i}/mask_files.txt
