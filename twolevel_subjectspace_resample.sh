@@ -242,6 +242,18 @@ elif [[ ${_arg_resample_input_space} == "final-target" ]]; then
   fi
 fi
 
+# Validate row counts of paired CSV files match the primary inputs file so
+# trailing subjects don't silently end up with empty lookups via sed.
+inputs_lines=$(wc -l < ${_arg_inputs})
+if [[ -n ${_arg_append_transforms} ]]; then
+  append_transforms_lines=$(wc -l < ${_arg_append_transforms})
+  [[ ${append_transforms_lines} -ne ${inputs_lines} ]] && failure "--append-transforms ${_arg_append_transforms} has ${append_transforms_lines} rows, expected ${inputs_lines} to match --inputs"
+fi
+if [[ -n ${_arg_target_space} ]]; then
+  target_space_lines=$(wc -l < ${_arg_target_space})
+  [[ ${target_space_lines} -ne ${inputs_lines} ]] && failure "--target-space ${_arg_target_space} has ${target_space_lines} rows, expected ${inputs_lines} to match --inputs"
+fi
+
 info "Processing Two-Level Resampling"
 i=1
 while read -r subject_scans; do
