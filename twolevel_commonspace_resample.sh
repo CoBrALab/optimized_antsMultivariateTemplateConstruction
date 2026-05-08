@@ -199,9 +199,11 @@ while read -r subject_scans; do
   mkdir -p ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}
   IFS=',' read -r -a scans <<<${subject_scans}
   filter_empty scans
+  [[ ${#scans[@]} -eq 0 ]] && failure "Subject ${i}: input row contains no valid scan paths after filtering empty fields"
   if [[ -n ${_arg_prepend_transforms} ]]; then
     IFS=',' read -r -a transforms <<< $(sed "${i}q;d" ${_arg_prepend_transforms})
     filter_empty transforms
+    [[ ${#transforms[@]} -eq 0 ]] && failure "Subject ${i}: --prepend-transforms row contains no valid transforms after filtering empty fields"
     prepend_transforms="--prepend-transforms ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}/prepend_transforms.txt"
     printf "%s\n" "${transforms[@]}" > ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}/prepend_transforms.txt
   else
@@ -210,6 +212,7 @@ while read -r subject_scans; do
   fi
   IFS=',' read -r -a resample_inputs <<< $(sed "${i}q;d" ${_arg_resample_inputs})
   filter_empty resample_inputs
+  [[ ${#resample_inputs[@]} -eq 0 ]] && failure "Subject ${i}: --resample-inputs row contains no valid paths after filtering empty fields"
 
   printf "%s\n" "${resample_inputs[@]}" > ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}/resample_inputs.txt
 
