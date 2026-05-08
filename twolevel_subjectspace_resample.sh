@@ -248,10 +248,12 @@ while read -r subject_scans; do
   mkdir -p ${_arg_output_dir}/subjectspace-resampled/subject_${i}
   IFS=',' read -r -a scans <<<${subject_scans}
   filter_empty scans
+  [[ ${#scans[@]} -eq 0 ]] && failure "Subject ${i}: input row contains no valid scan paths after filtering empty fields"
   # Save append-transforms for individual subjects
   if [[ -n ${_arg_append_transforms} ]]; then
     IFS=',' read -r -a transforms <<< $(sed "${i}q;d" ${_arg_append_transforms})
     filter_empty transforms
+    [[ ${#transforms[@]} -eq 0 ]] && failure "Subject ${i}: --append-transforms row contains no valid transforms after filtering empty fields"
     append_transforms="--append-transforms ${_arg_output_dir}/subjectspace-resampled/subject_${i}/append_transforms.txt"
     printf "%s\n" "${transforms[@]}" > ${_arg_output_dir}/subjectspace-resampled/subject_${i}/append_transforms.txt
   else
@@ -263,6 +265,7 @@ while read -r subject_scans; do
   if [[ -n ${_arg_target_space} ]]; then
     IFS=',' read -r -a target_space <<< $(sed "${i}q;d" ${_arg_target_space})
     filter_empty target_space
+    [[ ${#target_space[@]} -eq 0 ]] && failure "Subject ${i}: --target-space row contains no valid paths after filtering empty fields"
     target_space_cmd="--target-space ${temp_target_space_file}"
     printf "%s\n" "${target_space[@]}" > ${temp_target_space_file}
   else
