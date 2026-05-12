@@ -233,6 +233,8 @@ i=1
 while read -r subject_scans; do
 
   IFS=',' read -r -a scans <<<${subject_scans}
+  filter_empty scans
+  [[ ${#scans[@]} -eq 0 ]] && failure "Subject ${i}: input row contains no valid scan paths after filtering empty fields"
   if [[ $(wc -l < ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt) -gt 1 ]]; then
     debug "${__dir}/dbm.sh ${_arg_debug:+--debug} ${_arg_leftovers[@]+"${_arg_leftovers[@]}"} --jobname-prefix "dbm_twolevel_${__datetime}_subject_${i}_" --jacobian-smooth "${_arg_jacobian_smooth}" --output-dir ${_arg_output_dir}/firstlevel/subject_${i} ${_arg_output_dir}/firstlevel/subject_${i}/input_files.txt"
     if [[ ${_arg_dry_run} == "off" ]]; then
@@ -388,6 +390,71 @@ while read -r subject_scans; do
 
   else
     info "Subject ${i} has only a single file, "${scans[@]}", and does not have a subject wise average, it will only have second-level cross sectional DBM"
+
+    for scan in "${scans[@]}"; do
+      info "Generating Overall Jacobian Determinants"
+      if [[ ${_arg_target_space} == "unbiased" ]]; then
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz ]]; then
+          echo "ln -sfr ${_arg_output_dir}/secondlevel/dbm/jacobian/full/subject_${i}.nii.gz \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz"
+        fi
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz ]]; then
+          echo "ln -sfr ${_arg_output_dir}/secondlevel/dbm/jacobian/relative/subject_${i}.nii.gz \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz"
+        fi
+      else
+        mkdir -p ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/{relative,full}/final-target/smooth
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/final-target/$(basename ${scan} | extension_strip).nii.gz ]]; then
+          echo "ln -sfr ${_arg_output_dir}/secondlevel/dbm/jacobian/final-target/full/subject_${i}.nii.gz \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/final-target/$(basename ${scan} | extension_strip).nii.gz"
+        fi
+        if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/final-target/$(basename ${scan} | extension_strip).nii.gz ]]; then
+          echo "ln -sfr ${_arg_output_dir}/secondlevel/dbm/jacobian/final-target/relative/subject_${i}.nii.gz \
+            ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/final-target/$(basename ${scan} | extension_strip).nii.gz"
+        fi
+      fi
+    done >>${_arg_output_dir}/secondlevel/dbm/jobs/${__datetime}/overall_jacobian
+
+    for scan in "${scans[@]}"; do
+      info "Smoothing Jacobian Determinants"
+      for fwhm in "${_arg_jacobian_smooth_list[@]}"; do
+        sigma_num=$(calc "$(echo ${fwhm} | grep -o -E '^[0-9]+')/(2*sqrt(2*log(2)))")
+        if [[ ${fwhm} =~ [0-9]+mm$ ]]; then
+          fwhm_type=1
+        elif [[ ${fwhm} =~ [0-9]+vox$ ]]; then
+          fwhm_type=0
+        else
+          failure "Parse error for FWHM entry \"${fwhm}\", must end with vox or mm"
+        fi
+        if [[ ${_arg_target_space} == "unbiased" ]]; then
+          if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
+            echo "SmoothImage 3 \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/$(basename ${scan} | extension_strip).nii.gz \
+              ${sigma_num} \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+          fi
+          if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
+            echo "SmoothImage 3 \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/$(basename ${scan} | extension_strip).nii.gz \
+              ${sigma_num} \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+          fi
+        else
+          if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/final-target/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
+            echo "SmoothImage 3 \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/final-target/$(basename ${scan} | extension_strip).nii.gz \
+              ${sigma_num} \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/full/final-target/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+          fi
+          if [[ ! -s ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/final-target/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ]]; then
+            echo "SmoothImage 3 \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/final-target/$(basename ${scan} | extension_strip).nii.gz \
+              ${sigma_num} \
+              ${_arg_output_dir}/secondlevel/overall-dbm/jacobian/relative/final-target/smooth/$(basename ${scan} | extension_strip)_fwhm_${fwhm}.nii.gz ${fwhm_type} 0"
+          fi
+        fi
+      done
+    done >>${_arg_output_dir}/secondlevel/dbm/jobs/${__datetime}/smooth_jacobian
   fi
 
   ((++i))

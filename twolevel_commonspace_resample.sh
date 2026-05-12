@@ -192,14 +192,28 @@ echo ${__invocation} >${_arg_output_dir}/secondlevel/jobs/${__datetime}/invocati
 
 mkdir -p ${_arg_output_dir}/secondlevel/commonspace-resampled
 
+# Validate row counts of paired CSV files match the primary inputs file so
+# trailing subjects don't silently end up with empty lookups via sed.
+inputs_lines=$(wc -l < ${_arg_inputs})
+resample_inputs_lines=$(wc -l < ${_arg_resample_inputs})
+[[ ${resample_inputs_lines} -ne ${inputs_lines} ]] && failure "--resample-inputs ${_arg_resample_inputs} has ${resample_inputs_lines} rows, expected ${inputs_lines} to match --inputs"
+if [[ -n ${_arg_prepend_transforms} ]]; then
+  prepend_transforms_lines=$(wc -l < ${_arg_prepend_transforms})
+  [[ ${prepend_transforms_lines} -ne ${inputs_lines} ]] && failure "--prepend-transforms ${_arg_prepend_transforms} has ${prepend_transforms_lines} rows, expected ${inputs_lines} to match --inputs"
+fi
+
 info "Processing Two-Level Common Resampling"
 i=1
 while read -r subject_scans; do
 
   mkdir -p ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}
   IFS=',' read -r -a scans <<<${subject_scans}
+  filter_empty scans
+  [[ ${#scans[@]} -eq 0 ]] && failure "Subject ${i}: input row contains no valid scan paths after filtering empty fields"
   if [[ -n ${_arg_prepend_transforms} ]]; then
     IFS=',' read -r -a transforms <<< $(sed "${i}q;d" ${_arg_prepend_transforms})
+    filter_empty transforms
+    [[ ${#transforms[@]} -eq 0 ]] && failure "Subject ${i}: --prepend-transforms row contains no valid transforms after filtering empty fields"
     prepend_transforms="--prepend-transforms ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}/prepend_transforms.txt"
     printf "%s\n" "${transforms[@]}" > ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}/prepend_transforms.txt
   else
@@ -207,6 +221,8 @@ while read -r subject_scans; do
     prepend_transforms=""
   fi
   IFS=',' read -r -a resample_inputs <<< $(sed "${i}q;d" ${_arg_resample_inputs})
+  filter_empty resample_inputs
+  [[ ${#resample_inputs[@]} -eq 0 ]] && failure "Subject ${i}: --resample-inputs row contains no valid paths after filtering empty fields"
 
   printf "%s\n" "${resample_inputs[@]}" > ${_arg_output_dir}/secondlevel/commonspace-resampled/subject_${i}/resample_inputs.txt
 
