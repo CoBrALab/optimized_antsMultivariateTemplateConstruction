@@ -281,9 +281,10 @@ is used at both levels. For each transform and for each FWHM in
   (`smooth_vector`), compute the determinant (`mincblob -determinant`, plus 1),
   take the log (L66-88, L196-213).
 - `nlin_det` / `log_nlin_det` (file suffix `_rel`): same, but first remove the
-  linear part. `nlin_part()` concatenates the transform with the inverse of a
-  12-parameter affine that `lin_from_nlin -lsq12` fits to the inverse transform
-  (L17-26, L91-139).
+  linear part. `nlin_part()` first inverts the transform (template to scan
+  becomes scan to template). `lin_from_nlin -lsq12` fits a 12-parameter affine
+  to that inverse. Then `nlin_part()` applies the forward transform followed by
+  this affine, which cancels the linear part (L17-26, L91-139).
 
 The input transforms go from the template to the scan
 (docstring L147-166). The determinant images are on the template grid.
@@ -292,8 +293,9 @@ The input transforms go from the template to the scan
 
 `MBM` [L381-387](https://github.com/Mouse-Imaging-Centre/pydpiper/blob/04db1087f685dc54ec43253bb030efc438a2bbd8/pydpiper/pipelines/MBM.py#L381-L387):
 `xfms = invert(lsq12_nlin_xfm)` (timepoint template to LSQ6-resampled scan),
-`inv_xfms = lsq12_nlin_xfm`. The rigid (LSQ6) part is not included. These
-determinants are on the grid of each timepoint template.
+`inv_xfms = lsq12_nlin_xfm`. The rigid (LSQ6) part is not included. A rigid
+transform has determinant 1, so this does not change the determinant values.
+These determinants are on the grid of each timepoint template.
 
 ### 5.2 Level 1 determinants resampled into common space (`resampled_determinants`)
 
