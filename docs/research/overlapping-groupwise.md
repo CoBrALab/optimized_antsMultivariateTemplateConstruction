@@ -4,7 +4,7 @@ Research for [#141](https://github.com/CoBrALab/optimized_antsMultivariateTempla
 
 Question: what is the Overlapping group-wise longitudinal strategy, where is it defined, and how do we re-implement it with ANTs?
 
-Vocabulary follows `CONTEXT.md`: **Template**, **Longitudinal strategy**, **Level 1 / Level 2**. The words "atlas", "average" and "consensus average" appear only inside quotes.
+Vocabulary follows `CONTEXT.md`: **Template**, **Longitudinal strategy**, **Level 1 / Level 2**. The words "atlas", "average" and "consensus average" appear only in quotes, titles, file names and the paper's `Avg(...)` notation.
 
 ## Answer in brief
 
@@ -58,7 +58,7 @@ The slides give no command, script name or wiki link for this strategy. The Regi
 ### Negative results
 
 - **pydpiper.** `pydpiper/pipelines/` at S3 contains `asymmetry.py`, `cortical_thickness.py`, `LSQ12.py`, `LSQ6.py`, `MAGeT.py`, `MBM.py`, `NLIN.py`, `registration_chain.py`, `registration_tamarack.py`, `stage_embryos_in_4D_atlas.py`, `twolevel_model_building.py`. `git grep -i overlap` over all 13 remote branches matches only a comment in `pydpiper/execution/queueing.py` (about server/client overlap). `git log --all -G "overlapping|adjacent time"` returns nothing. No commit message names the strategy. [S3]
-- **`stage_embryos_in_4D_atlas.py`** is not related. It stages one embryo scan against an existing 4D embryo atlas: it finds the atlas timepoint with the closest volume, registers the scan to the atlas timepoints within ±7 of that match, and scores each registration by deformation magnitude. [S3 `pydpiper/pipelines/stage_embryos_in_4D_atlas.py` docstring lines 22–62, `match_embryo_to_4D_atlas` lines 112–150]
+- **`stage_embryos_in_4D_atlas.py`** is not related. It stages one embryo scan against an existing set of embryo reference images, one for each stage (the script calls it a "4D atlas"): it finds the stage with the closest volume, registers the scan to the stages within ±7 of that match, and scores each registration by deformation magnitude. [S3 `pydpiper/pipelines/stage_embryos_in_4D_atlas.py` docstring lines 22–62, `match_embryo_to_4D_atlas` lines 112–150]
 - **MICe wiki.** The "Longitudinal Registration Tools" page describes only Registration Chain. It has zero matches for "overlap" in the 2019 and 2024 snapshots. No other archived MICePub page name refers to it (checked "Workflow Diagrams", "Registration Chain Workflow", "Mouse Brain Imaging for Neurodevelopmental Disorders"). [S4]
 - **GitHub search** of the `Mouse-Imaging-Centre` organisation for "overlapping" and "groupwise" code and issues finds nothing relevant. The companion slides `MISS_Longitudinal_Analysis.pdf` do not mention the strategy.
 - **Literature.** A search for "overlapping group-wise" finds only S1 (and a ResearchGate copy of its Fig. 2). S1 says "The registration pipelines are implemented in pydpiper" [S1 §Software], but that refers to the group-wise registration itself (inference: probably one pydpiper model build for each Template). The overlap orchestration was not released.
@@ -143,8 +143,8 @@ The paper [S1 §Developmental Time-Series Registration]:
 
 ### Resampling labels (subject space and common space)
 
-- S1 draws labels on the P11 average and on the "P10+P11 average image", then maps them to every scan "via inverse transforms". [S1 §Automated Time-Series Analyses: "Since all the images in the developmental time series (including the P11 images) from both the even and odd cohorts of mice were registered to the average P10+P11 image, once a region was defined in P11 space it could be mapped to each earlier time point via inverse transforms."] This is subject-space resampling through the inverse chain.
-- S1 also tracks points placed on the average P11 image back through the registrations to earlier stages. [S1 §Quantitative analysis of cerebellum development, Fig. 12]
+- S1 draws labels on the "average P11 image" and on the "average P10+P11 image", then maps them to every scan "via inverse transforms". [S1 §Automated Time-Series Analyses: "Since all the images in the developmental time series (including the P11 images) from both the even and odd cohorts of mice were registered to the average P10+P11 image, once a region was defined in P11 space it could be mapped to each earlier time point via inverse transforms."] This is subject-space resampling through the inverse chain.
+- S1 also tracks points placed on the "averaged P11 image" back through the registrations to earlier stages. [S1 §Quantitative analysis of cerebellum development, Fig. 12]
 - Common-space resampling uses the forward chain of Eq. (1). [S1 Eq. (1)]
 
 ### Balanced design
@@ -184,5 +184,5 @@ These are notes for the spec, not findings.
 5. **Cohort definition.** In S1, cohorts are interleaved in time (odd/even days). Do we accept any cohort schedule, or must cohort timepoints interleave and end on adjacent days?
 6. **Window width.** S1 uses pairs (width 2, stride 1). Do we allow wider windows?
 7. **Missing data.** The strategy has no rule for a missing scan. Do we reject the input, drop the subject, or bridge the gap another way (for example with another subject's scan or a Template-to-Template registration, which S1 does not do)?
-8. **Per-timepoint averages.** S1 shows "registered and averaged images" at every day P1–P11 (Fig. 4, Fig. 7), but does not say how it made them (resample through the chain into one space, or take them from the pair Templates). Do we produce per-timepoint images?
+8. **Per-timepoint images.** S1 shows "registered and averaged images" at every day P1–P11 (Fig. 4, Fig. 7), but does not say how it made them (resample through the chain into one space, or take them from the pair Templates). Do we produce per-timepoint images?
 9. **Cohort bias.** The slides list "May introduce cohort biases" [S2 p. 36]. S1 models cohort as a fixed effect. What does the validation plan check for this?
