@@ -1,6 +1,6 @@
 # Overlapping group-wise: definition and topology
 
-Research for [#141](https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/issues/141), part of map [#138](https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/issues/138).
+Research for [#141](https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/issues/141) and [#145](https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/issues/145), part of map [#138](https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/issues/138). #145 added sources S5–S8 (see "What the new sources add" and "pydpiper branches and forks").
 
 Question: what is the Overlapping group-wise longitudinal strategy, where is it defined, and how do we re-implement it with ANTs?
 
@@ -16,6 +16,10 @@ Vocabulary follows `CONTEXT.md`: **Template**, **Longitudinal strategy**, **Leve
 - The paper registers no Template to another Template. A subject's own scan at the shared timepoint connects two adjacent Templates. Transforms are concatenated through that scan. [S1 Eq. (1)]
 - The paper computes one Jacobian determinant per scan, in Level 2 space, from the inverse of the full concatenated transform. [S1 §Developmental Time-Series Registration]
 - No primary source defines separate "Level 1" and "Level 2" determinants. The slides name them, but give only one sentence each. [S2 p. 34]
+- The published PDF prints the Eq. (1) typo (`T_{Avg(P9+P11)→P9}`). The typo is in the record, not in the PMC transcription. Only the reading `→P11` composes. [S5 p. 52, Eq. (1)]
+- Friedel 2014 gives the nearest primary text for two kinds of determinant in a chained MICe strategy: "from a space common to all subjects, or between individual subject pairs". [S7 §4.1.5] Inference: this is the likely origin of the slides' Level 1 / Level 2 names.
+- Wong 2015 is not Overlapping group-wise. It links adjacent Templates by Template-to-Template registration (the link that Szulc avoids), and it uses Gaussian-weighted, overlapping time windows to make Templates. [S6 pp. 3584–3585, 3590]
+- No pydpiper branch, tag, pull-request ref or fork has code for Overlapping group-wise. No ref has a fix to Tamarack composition, symmetric links, or missing-data handling that `main` does not have. [S8]
 
 ## Sources
 
@@ -25,6 +29,10 @@ Vocabulary follows `CONTEXT.md`: **Template**, **Longitudinal strategy**, **Leve
 | S2 | MICe Summer School 2017, "Longitudinal Registration" slides. | [`longitudinal_slides/MISS_Longitudinal_Registration.pdf`](https://github.com/Mouse-Imaging-Centre/summer_school2017/blob/371f5520ee01b903c2d542001bce07bc6efaf708/longitudinal_slides/MISS_Longitudinal_Registration.pdf) at `Mouse-Imaging-Centre/summer_school2017@371f552`. Page numbers are PDF pages. |
 | S3 | pydpiper source code. | `Mouse-Imaging-Centre/pydpiper@04db1087f685dc54ec43253bb030efc438a2bbd8` (`main`) and all 13 remote branches. |
 | S4 | MICe wiki, "Longitudinal Registration Tools". | Wayback snapshots [20240615075028](https://web.archive.org/web/20240615075028/https://wiki.mouseimaging.ca/display/MICePub/Longitudinal+Registration+Tools) and 20191118072520. The live host `wiki.mouseimaging.ca` does not resolve. |
+| S5 | S1, published version (Elsevier typeset PDF). | NeuroImage 118 (2015) 49–62, local PDF `1-s2.0-S1053811915004097-main.pdf` (not in git). Page numbers are journal pages. The supplementary files (NIHMS696093 supplement 1–7; Elsevier mmc) were not retrieved: PMC and `ars.els-cdn.com` returned an HTML or XML access page. |
+| S6 | Wong MD, van Eede MC, Spring S, Jevtic S, Boughner JC, Lerch JP, Henkelman RM. 4D atlas of the mouse embryo for precise morphological staging. *Development* 2015;142:3583–3591. | [doi:10.1242/dev.125872](https://doi.org/10.1242/dev.125872), local PDF `dev125872.pdf` (not in git). Page numbers are journal pages. |
+| S7 | Friedel M, van Eede MC, Pipitone J, Chakravarty MM, Lerch JP. Pydpiper: a flexible toolkit for constructing novel registration pipelines. *Front. Neuroinform.* 2014;8:67. | [doi:10.3389/fninf.2014.00067](https://doi.org/10.3389/fninf.2014.00067), local PDF `fninf-08-00067.pdf` (not in git). |
+| S8 | pydpiper, all refs, and its forks. | Mirror clone of `Mouse-Imaging-Centre/pydpiper` on 2026-09-22: 13 branches, 44 tags, 31 `refs/pull/*`, 1801 commits. `main` = `04db1087f685dc54ec43253bb030efc438a2bbd8`. 10 forks, compared with the GitHub compare API. |
 
 ## Where the strategy is (and is not) defined
 
@@ -111,7 +119,7 @@ Reading of Eq. (1):
 1. `T_{P7→Avg(P7+P9)}`: the scan's own transform into the first Level 1 Template it belongs to.
 2. `T_{Avg(P7+P9)→P9}`: from that Template to the **same mouse's** P9 scan. Inference: this is the inverse of that P9 scan's transform into Avg(P7+P9). S1 does not say "same mouse" in words, but the chain is a single subject's time series ("The ability to analyze each subject's time series is maintained through overlapping adjacent scans"). [S1]
 3. `T_{P9→Avg(P9+P11)}`: the same P9 scan's forward transform into the next Level 1 Template.
-4. `T_{Avg(P9+P11)→P9}`: **as printed, this term ends at P9.** The next term starts at P11. For the chain to compose, this term must be `T_{Avg(P9+P11)→P11}`. Inference: the printed "P9" is a typo for "P11".
+4. `T_{Avg(P9+P11)→P9}`: **as printed, this term ends at P9.** The next term starts at P11. For the chain to compose, this term must be `T_{Avg(P9+P11)→P11}`. Inference: the printed "P9" is a typo for "P11". The typeset journal PDF prints the same "→P9" [S5 p. 52, Eq. (1)], so the typo is in the published record. Fig. 2 draws no P9 → P11 edge, so no other reading composes. [S5 Fig. 2]
 5. `T_{P11→P10.5}`: the same mouse's last-timepoint scan into the Level 2 Template.
 
 Consequences:
@@ -140,6 +148,7 @@ The paper [S1 §Developmental Time-Series Registration]:
   - (a) Level 1 = determinant of the scan's transform to one Level 1 Template, in that Template's space (like `dbm.sh` on each Level 1 Template).
   - (b) Level 1 = determinant of the chain up to the cohort's last Level 1 Template (A_{T−1}), in that space. This is "intra-cohort" and gives one space for each cohort.
   - (c) Level 2 = determinant of the full chain in Level 2 space (the S1 definition), or only of the last hop `T_{A_{T−1} → C}` resampled into Level 2 space (like two-level "level 2" determinants).
+  - (d) Level 1 = determinant of one adjacent hop: scan (s, t_i) → A_i → scan (s, t_{i+1}). This follows the Friedel 2014 "between individual subject pairs" kind [S7 §4.1.5] and the pydpiper Registration Chain pair stats [S8 `025455d`]. Added in #145.
 
 ### Resampling labels (subject space and common space)
 
@@ -166,6 +175,85 @@ The paper [S1 §Developmental Time-Series Registration]:
 
 [S1 §Animals, §Developmental Time-Series Registration, Fig. 2]
 
+## What the new sources add (#145)
+
+### Szulc et al. 2015, published PDF [S5]
+
+- **Eq. (1).** The typeset equation is the same as the manuscript: `T_{P7→P10.5} = T_{P7→Avg(P7+P9)} ⊕ T_{Avg(P7+P9)→P9} ⊕ T_{P9→Avg(P9+P11)} ⊕ T_{Avg(P9+P11)→P9} ⊕ T_{P11→P10.5}`. [S5 p. 52, Eq. (1)] The typo is in the published record.
+- **Fig. 2.** Same figure as the manuscript. Arrows go from the scans to "P1+P3 avg" … "P9+P11 avg" (odd cohort), "P2+P4 avg" … "P8+P10 avg" (even cohort), and from the P10 and P11 scans to "P10+P11 avg". The figure has no Template-to-Template arrow and no scan-to-scan arrow. [S5 p. 52, Fig. 2]
+- **Methods.** The text is the same as the manuscript. "Each scan can be mapped to any other scan in the series by using appropriate forward and inverse transformations." [S5 pp. 51–52] The paper uses ANTs SyN. [S5 p. 51]
+- **Per-timepoint images.** "Registration of the data was employed to generate averaged 3D MEMRI images at each stage." [S5 p. 54] Fig. 4 shows "registered and averaged images" every other day, P1 to P11. [S5 Fig. 4] For Fig. 6, "we aligned average images from each day to every other day". [S5 p. 52] The paper does not say how it made one image for each day. This does not answer Q8.
+- **Supplementary material.** Not retrieved (see S5 in Sources). The text cites Suppl. Fig. 1 (body weights), Suppl. Fig. 2 (P11 and P21 brain volumes), Suppl. Fig. 3 (individual and averaged images), Suppl. Table 1 (regional growth), and Suppl. Videos 1–5 (animations of growth, DBM, folia tracking). [S5 pp. 53–56] All are results. No citation points to a method in the supplement.
+- **Software.** "The registration pipelines are implemented in pydpiper (Friedel et al., 2014) (source code: https://github.com/Mouse-Imaging-Centre/pydpiper)". [S5 p. 53] S8 finds no Overlapping group-wise code there.
+
+### Wong et al. 2015 [S6]
+
+Wong 2015 is **not** Overlapping group-wise. The data is cross-sectional: each embryo is imaged once, at one of six ages, 8 embryos for each age. [S6 p. 3590, Sample preparation] So the paper has no subject chains and no missing-data concept. It cites Szulc 2015 only as a related study. [S6 p. 3589]
+
+What it adds:
+
+- **Template-to-Template links between adjacent timepoints.** First iteration: one group-wise Template for each age ("population average image of the eight randomly selected mouse embryo images"). [S6 p. 3584, Fig. 2] Second iteration: "each of these model images was registered to its adjacent time point, using source-to-target registration, in the order of increasing time". [S6 pp. 3584–3585] Methods: "Source-to-target image registrations were conducted between image models in the direction of increasing developmental time." [S6 p. 3590] This is the link that Szulc does not use. It is the Tamarack topology (one Template for each timepoint, adjacent Templates registered together). Inference: it is MICe precedent for Tamarack, not for Overlapping group-wise.
+- **Adjacency limit.** Registration failed "between embryo images differing by more than half a day due to insufficient anatomical homology (data not shown)". [S6 p. 3585] This is the same reason Szulc gives for pairs of adjacent days. [S1 Fig. 6]
+- **Weighted, overlapping time windows.** Third iteration: for each of 26 stages at 0.1 dpc intervals, one group-wise Template from the embryos "staged within a range of ±0.2 dpc" of that stage. "Gaussain [sic] weighted (σ=0.08 dpc) group-wise registration was performed by weighting the transforms of the pair-wise affine registration and then applying the weights to the image intensities of each corresponding embryo image when generating population average images for each non-linear iteration." [S6 p. 3585] The windows are 0.4 dpc wide with a 0.1 dpc stride, so one embryo is an input to up to four Templates. This is the only MICe source with a window wider than two timepoints. It needs a weight for each input in the affine average and in the image average. `modelbuild.sh` has no such weights (inference from `CLAUDE.md` "Pipeline Flow"; not checked in code for this ticket).
+- **Time interpolation.** Displacements between adjacent Templates are fitted with cubic B-splines over time, then evaluated to make images every 0.1 dpc (second iteration) and 0.05 dpc (third iteration, 51 images). [S6 pp. 3584–3585] Outside the scope of Overlapping group-wise.
+- **Validation pattern.** Re-staging the 48 input embryos with the second and third iterations: "97% drifted in stage by no more than 0.1 dpc". [S6 p. 3586] This is a self-consistency check. Inference: a similar check (do the scans stay at the same place when we rebuild) could serve Q9.
+- **No determinants.** Wong 2015 computes no Jacobian determinants. Staging uses normalized cross-correlation (global) and displacement magnitude fitted with a quadratic over time (voxel-wise). [S6 pp. 3586–3587]
+- **Registration.** MINC tools (6-parameter, then pairwise 12-parameter, then a six-generation non-linear registration; Collins and Evans 1997), not ANTs. [S6 p. 3590]
+- **Code.** The paper gives a data URL for the 51 images (mouseimaging.ca), not code. [S6 p. 3585] `pydpiper/pipelines/stage_embryos_in_4D_atlas.py` (van Eede, first commit `d4c00bd`, 2017-10-31) stages new embryos against an existing set of images, one for each stage. It does not build that set. [S8] A search of the `Mouse-Imaging-Centre` GitHub organisation found no builder for the Wong atlas.
+
+### Friedel et al. 2014 [S7]
+
+Friedel 2014 has **no** Overlapping group-wise section and no Tamarack. It describes four pipelines: iterative group-wise registration, Registration Chain, two-level registration, and MAGeT. [S7 §2 p. 3, §4.2–4.5]
+
+What it adds:
+
+- **Adjacent timepoints and concatenation.** "it is often possible to accurately register adjacent time points together if the time-series was densely sampled (Lerch et al., Manuscript in preparation). The resulting transforms can be concatenated and used to calculate shape changes from a common coordinate space." [S7 §1 pp. 2–3] Inference: the manuscript in preparation is Szulc 2015 (Lerch is second author; Szulc 2013 is cited separately in the same sentence).
+- **Two kinds of determinant in a chain.** "the transform concatenation often necessary to get the appropriate average-to-subject transform would happen in a modular way, independent of determinant calculation ... motivated in part by differences between iterative group-wise registration (section 4.2) and the registration chain (section 4.3). In the latter, deformation fields can be calculated both from a space common to all subjects, or between individual subject pairs". [S7 §4.1.5 p. 10] pydpiper implemented both: 2013 commits `025455d` ("stats are now calculated from each subject to the average time point. This is in addition to the existing calculations between pairs") and `d361f3c` (stats "from average to each other time point"). [S8] Inference: "between pairs" (a local, adjacent-hop determinant) and "from a common space" (a full-chain determinant) are the two kinds the slides later call Level 1 and Level 2. This narrows Q1.
+- **Determinant recipe.** "Once a common space has been identified, the full transform from this common space back to each individual subject is used to calculate a deformation field. After smoothing and taking the Jacobian determinant of this deformation field ... we can use DBM". [S7 §4.1.5 p. 10] The worked example also computes the "pure non-linear" field (linear part removed) and blurs it before the determinant. [S7 §5 p. 14] This matches Szulc: invert the chain, then take the determinant in common space. [S1]
+- **Chain direction and common timepoint.** Registration Chain registers "source (timepoint i) to target (timepoint i + 1)". "one time point is chosen as the common time point"; "Alternatively, a different timepoint could be chosen as the common space." [S7 §4.3 p. 12, Fig. 10] With Wong (increasing time) [S6] and Tamarack (compose forward, then invert after the common timepoint) [S8], every MICe chained method goes forward in time. Inference: this supports Eq. (1)'s choice of the later Template for a middle scan (Q2) as a convention. It is not a rule.
+- **Nothing on** cohorts, schedules, window width, missing data, or per-timepoint images.
+- **Code location.** The paper gives `https://github.com/mfriedel/pydpiper` [S7 p. 3]; this URL now returns an HTTP 301 redirect; the maintained repository is `Mouse-Imaging-Centre/pydpiper` (S8).
+
+## pydpiper branches and forks
+
+Findings for Overlapping group-wise, Registration Chain and Tamarack. [S8]
+
+### Overlapping group-wise: nothing on any ref
+
+- `git log --all` over 1801 commits (13 branches, 44 tags, 31 pull-request refs). Commit-message search for overlap, sliding, window, adjacent, embryo, 4D, P10, cohort, pair: hits are only about staging embryos, pairwise LSQ12 and MAGeT options.
+- Content search (`git log --all -G`) over `*.py` for `[Oo]verlap|[Ss]liding|[Aa]djacent|[Cc]ohort|P10|[Ww]indow`: hits are the windowed-sinc interpolators, the ANTs convergence window, the server/client "overlap" comment in the executor, and the Registration Chain functions `avgToNonAdjacentTimePt` / `nonAdjacentTimePtToAvg` (2013). None builds pairs of timepoint Templates.
+- `pairwise_nlin.py` (2013, `f54dc06`, removed later) registers all pairs of input images. It is not a timepoint window.
+- The old layout (`applications/`, `pydpiper_apps/`) has no commits off `main` except merge commits of pull-request refs.
+
+### Registration Chain and Tamarack: branches that differ from `main`
+
+`develop` (`b98663009ceb`) is the same as `main` for both files. Only these refs have commits to `pydpiper/pipelines/registration_chain.py` or `registration_tamarack.py` that `main` does not have:
+
+| Ref | Tip | What differs from `main` |
+|-----|-----|--------------------------|
+| `itk-conversion` | `567f06248df449e339a44f6e2082b9e42872881c` (2022-09-06) | WIP ITK port. Renames `source/target` to `moving/fixed` and calls through an `algorithms` object. Tamarack: the inter-Template registration uses the full LSQ12 protocol module. **Drops** `resampled_log_nlin_det` (commented out, line 227) and the blurred `determinants_at_fwhms`; computes only an unblurred `log_full_det` when `calc_stats` is on, with "FIXME blurring, nlin det, etc." (lines 245–250). Adds "TODO we can improve the logic here to remove the use of 'invert' by choosing which direction to go in prior based on whether we're before/after the common time point" (line 196). This is a regression in progress, not a fix. |
+| `makeflow` | `a6103f051560d19e0816a34c01d413b6705ab65c` (2022-06-21) | Older state of the same WIP work (a subset of `itk-conversion`). |
+| `lsq7` | `ea193fc57625f119a166dcb427ab85752a9d39bb` (2018-10-23) | One import refactor in `registration_chain.py` (`5ee651c`). The rest of the diff is `main` being newer. |
+| `beast` | `7444556eecf2ef41b6a6f403cf0416fc6cd83efa` (2017-04-18) | A 2017 merge of `develop`. It predates Tamarack (first commit `4c35b5f`, 2017-11-27). |
+
+The composition logic is the same on all refs. On `main`, Tamarack composes the adjacent Template-to-Template transforms towards the common timepoint and inverts the composed transform for groups at or after it (`registration_tamarack.py` line 181 at `04db108`). It then concatenates each scan's first-level transform with that and inverts the result for determinants (lines 212–222). It also resamples each first-level log determinant (full and non-linear) into common space (lines 194–210).
+
+Fixes that are already on `main` (so a re-implementation should not copy the older behaviour):
+
+- `62f4339` (2020-04-14, "registration tamarack: unbreak and install"): before this, the inter-Template non-linear registration used only the last level of the protocol ("FIXME no good can come of this"), and the overall determinants were not added to the pipeline stages (no `s.defer`).
+- `dfa1b5d` (2021-01-25): simplifies the Tamarack CSV outputs.
+- `4c35b5f` added Tamarack with "needs testing etc.".
+
+**Symmetric links** (registering adjacent Templates in both directions, or to a midpoint): none on any ref. **Missing-data handling** in Chain or Tamarack: no change on any ref.
+
+### Forks
+
+10 forks. Compared with `main` by the GitHub compare API on each fork's default branch and on each branch that exists only in the fork.
+
+- Ahead of upstream: `psteadman/pydpiper` `master` (+2: masks and blurs in `NLIN.py` and `minc/registration.py`), `dorkylever/pydpiper` `patch-1`..`patch-3` (+1 each: tests and `minc/registration.py`), `gdevenyi/pydpiper` `develop` (+1: `atoms_and_modules/minc_atoms.py`).
+- All other fork branches are 0 commits ahead.
+- No fork changes `registration_chain.py` or `registration_tamarack.py`, and no fork has Overlapping group-wise code.
+
 ## Mapping to this repository (inference)
 
 These are notes for the spec, not findings.
@@ -177,12 +265,14 @@ These are notes for the spec, not findings.
 
 ## Open questions for the spec
 
-1. **Level 1 / Level 2 determinants.** S1 defines only one determinant per scan (full chain, Level 2 space). The slides name Level 1 and Level 2 determinants with no method. Which definition do we ship (options a–c above)?
-2. **Canonical Level 1 transform.** A middle scan belongs to two Level 1 Templates. Which one starts its chain? S1 Eq. (1) uses the later Template (P7 → Avg(P7+P9)). Do we follow that?
-3. **Eq. (1) typo.** We read `T_{Avg(P9+P11)→P9}` as `→P11`. Confirm with the authors (Lerch, Friedel) if possible.
-4. **More than two cohorts.** The slides say "Register last timepoint in each cohort together". Is Level 2 one Template of all cohorts' last timepoints, even if these timepoints are far apart?
-5. **Cohort definition.** In S1, cohorts are interleaved in time (odd/even days). Do we accept any cohort schedule, or must cohort timepoints interleave and end on adjacent days?
-6. **Window width.** S1 uses pairs (width 2, stride 1). Do we allow wider windows?
-7. **Missing data.** The strategy has no rule for a missing scan. Do we reject the input, drop the subject, or bridge the gap another way (for example with another subject's scan or a Template-to-Template registration, which S1 does not do)?
-8. **Per-timepoint images.** S1 shows "registered and averaged images" at every day P1–P11 (Fig. 4, Fig. 7), but does not say how it made them (resample through the chain into one space, or take them from the pair Templates). Do we produce per-timepoint images?
-9. **Cohort bias.** The slides list "May introduce cohort biases" [S2 p. 36]. S1 models cohort as a fixed effect. What does the validation plan check for this?
+Status after #145. "Answered" means a primary source settles it. "Narrowed" or "informed" means a source helps, but the spec must still decide.
+
+1. **Level 1 / Level 2 determinants. Narrowed.** S1 defines only one determinant per scan (full chain, Level 2 space). The slides name Level 1 and Level 2 determinants with no method. Friedel 2014 names two kinds for a chain: "from a space common to all subjects" and "between individual subject pairs" [S7 §4.1.5], and pydpiper Registration Chain computed both (`025455d`, `d361f3c`) [S8]. Add option (d) to the list in "Determinants": Level 1 = determinant of one adjacent hop (a scan to the same subject's scan at the next timepoint, through their shared Level 1 Template). Which definition do we ship (a–d)?
+2. **Canonical Level 1 transform. Corroborated as convention, still a decision.** A middle scan belongs to two Level 1 Templates. S1 Eq. (1) uses the later Template (P7 → Avg(P7+P9)) [S5 Eq. (1)]. Every MICe chained method goes forward in time (Registration Chain i → i+1 [S7 §4.3]; Wong "increasing time" [S6 p. 3590]; Tamarack composes forward [S8]). No source gives a rule. Do we follow Eq. (1)?
+3. **Eq. (1) typo. Answered.** The typeset PDF prints `T_{Avg(P9+P11)→P9}` [S5 p. 52], and Fig. 2 has no P9 → P11 link. Only `→P11` composes. Author confirmation is optional.
+4. **More than two cohorts. Open.** No new source adds anything. The slides say "Register last timepoint in each cohort together". Is Level 2 one Template of all cohorts' last timepoints, even if these timepoints are far apart?
+5. **Cohort definition. Open.** No new source adds anything (Wong 2015 has no cohorts; Friedel 2014 has no cohorts). Do we accept any cohort schedule, or must cohort timepoints interleave and end on adjacent days?
+6. **Window width. Informed.** S1 uses pairs (width 2, stride 1). Wong 2015 used Gaussian-weighted windows (σ = 0.08 dpc, ±0.2 dpc, stride 0.1 dpc), with weights on the affine average and on image intensities [S6 p. 3585]. That needs per-input weights in `modelbuild.sh`. It is also a cross-sectional design, so it does not show how chains cross a wider window. Do we allow wider windows, and if so, weighted or not?
+7. **Missing data. Open.** No new source adds anything. No pydpiper ref changes missing-data handling [S8]. Do we reject the input, drop the subject, or bridge the gap another way (for example with another subject's scan, or a Template-to-Template registration as in Wong 2015 and Tamarack, which S1 does not do)?
+8. **Per-timepoint images. Open.** The published text says "Registration of the data was employed to generate averaged 3D MEMRI images at each stage" [S5 p. 54] and uses "average images from each day" for Fig. 6 [S5 p. 52], but does not say how it made them. The supplement was not retrieved. Do we produce per-timepoint images, and how?
+9. **Cohort bias. Open, one idea.** The slides list "May introduce cohort biases" [S2 p. 36]. S1 models cohort as a fixed effect. Wong 2015 used a rebuild-and-restage self-consistency check (97% of inputs moved ≤ 0.1 dpc) [S6 p. 3586]. Inference: a similar rebuild check could be one part of the validation plan. What does the plan check?
