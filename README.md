@@ -341,19 +341,15 @@ output/
 │   └── <run date/time in ISO format>
 │       ├── initialaverage
 │       ├── rigid_{0,1,2,3}_maskaverage
-│       ├── rigid_{0,1,2,3}_maskresample
 │       ├── rigid_{0,1,2,3}_reg
 │       ├── rigid_{0,1,2,3}_shapeupdate
 │       ├── similarity_{0,1,2,3}_maskaverage
-│       ├── similarity_{0,1,2,3}_maskresample
 │       ├── similarity_{0,1,2,3}_reg
 │       ├── similarity_{0,1,2,3}_shapeupdate
 │       ├── affine_{0,1,2,3}_maskaverage
-│       ├── affine_{0,1,2,3}_maskresample
 │       ├── affine_{0,1,2,3}_reg
 │       ├── affine_{0,1,2,3}_shapeupdate
 │       ├── nlin_{0,1,2,3}_maskaverage
-│       ├── nlin_{0,1,2,3}_maskresample
 │       ├── nlin_{0,1,2,3}_reg
 │       └── nlin_{0,1,2,3}_shapeupdate
 ├── dbm
