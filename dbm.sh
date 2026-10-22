@@ -288,22 +288,27 @@ IFS=',' read -r -a _arg_jacobian_smooth <<<${_arg_jacobian_smooth}
 # Preflight check for required programs
 preflight_check
 
-# Affine Jacobians are computed from the determinant printed by antsTransformInfo,
-# which requires ANTs >= 2.5.3
 for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat ]]; then
     failure "Expected affine file ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat does not exist"
   fi
 done
-if ! antsTransformInfo ${_arg_output_dir}/final/transforms/$(basename ${_arg_inputs[0]} | extension_strip)_0GenericAffine.mat | grep -q '^Determinant:'; then
-  failure "antsTransformInfo does not report the affine determinant, ANTs >= 2.5.3 is required"
-fi
 
 # Make output directories
 mkdir -p ${_arg_output_dir}/dbm/intermediate/delin/{affine,jacobian}
 mkdir -p ${_arg_output_dir}/dbm/intermediate/nlin/jacobian
 mkdir -p ${_arg_output_dir}/dbm/intermediate/affine/jacobian
 mkdir -p ${_arg_output_dir}/dbm/jacobian/{final-target,}/{relative,full}//smooth
+
+# Affine Jacobians are computed from the determinant printed by antsTransformInfo
+# Delin affines are MatrixOffsetTransformBase, which antsTransformInfo reads from ANTs >= 2.6.3
+printf '%s\n' '#Insight Transform File V1.0' '#Transform 0' \
+  'Transform: MatrixOffsetTransformBase_double_3_3' \
+  'Parameters: 1 0 0 0 1 0 0 0 1 0 0 0' 'FixedParameters: 0 0 0' \
+  >${_arg_output_dir}/dbm/intermediate/transforminfo_check.txt
+if ! antsTransformInfo ${_arg_output_dir}/dbm/intermediate/transforminfo_check.txt 2>/dev/null | grep -q '^Determinant:'; then
+  failure "antsTransformInfo cannot report the determinant of a MatrixOffsetTransformBase, ANTs >= 2.6.3 is required"
+fi
 
 # Convert geometric option to ANTs option
 if [[ ${_arg_use_geometric} == "on" ]]; then
