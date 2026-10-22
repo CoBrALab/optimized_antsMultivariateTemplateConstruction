@@ -21,6 +21,16 @@ Finally, support scripts are provided to take advantage of the co-registration
 performed by template construction for moving labels and quantitative maps
 to/from subject and common space.
 
+## Citing this software
+
+If you use this software in your research, please refer to this repository along with:
+```
+Germann, J., Gouveia, F. V., Chakravarty, M. M. & Devenyi, G. A.
+Longitudinal deformation-based morphometry pipeline to study neuroanatomical differences in structural MRI based on SyN unbiased templates.
+Aperture Neuro 5, (2025).
+http://dx.doi.org/10.52294/001c.133510
+```
+
 ## How does this all work?
 
 The ANTs unbiased model/template building method consists of the **iterative** application
@@ -81,7 +91,9 @@ computational load
 
 This pipeline is primarily written in `bash`, and requires [ANTs](https://github.com/ANTsX/ANTs)
 for the commands, and [qbatch](https://github.com/CoBrALab/qbatch)
-for running commands locally or with cluster integration.
+for running commands locally or with cluster integration. `dbm.sh` requires
+ANTs 2.6.3 or newer, because it uses `antsTransformInfo` to get the determinant
+of affine transforms.
 
 A dependency submodule of [minc-toolkit-extras](https://github.com/cobralab/minc-toolkit-extras)
 is automatically included with appropriate versioning.
@@ -124,8 +136,8 @@ Example help, always check `./modelbuild.sh --help` in case this document has no
 been updated
 
 ```bash
-A qbatch enabled, optimal registration pyramid based re-implementaiton of antsMultivariateTemplateConstruction2.sh
-Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--starting-average-type <arg>] [--starting-average-prog <arg>] [--(no-)starting-average-norm] [--iterations <arg>] [--convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
+A qbatch enabled, optimal registration pyramid based re-implementation of antsMultivariateTemplateConstruction2.sh
+Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] [--starting-target <arg>] [--starting-target-mask <arg>] [--starting-average-resolution <arg>] [--starting-average-type <arg>] [--starting-average-prog <arg>] [--(no-)starting-average-norm] [--iterations <arg>] [--convergence <arg>] [--linear-shrink-factors <arg>] [--linear-smoothing-sigmas <arg>] [--linear-convergence <arg>] [--syn-shrink-factors <arg>] [--syn-smoothing-sigmas <arg>] [--syn-convergence <arg>] [--syn-control <arg>] [--syn-metric <arg>] [--(no-)float] [--(no-)fast] [--average-type <AVERAGE>] [--average-prog <PROG>] [--(no-)average-norm] [--(no-)nlin-shape-update] [--(no-)affine-shape-update] [--(no-)scale-affines] [--(no-)rigid-update] [--sharpen-type <SHARPEN>] [--masks <arg>] [--(no-)mask-extract] [--mask-merge-threshold <arg>] [--stages <arg>] [--(no-)reuse-affines] [--final-target <arg>] [--final-target-mask <arg>] [--walltime-short <arg>] [--walltime-linear <arg>] [--walltime-nonlinear <arg>] [--chunksize-short <arg>] [--chunksize-linear <arg>] [--chunksize-nonlinear <arg>] [--jobname-prefix <arg>] [--job-predepend <arg>] [--(no-)skip-file-checks] [--(no-)block] [--(no-)debug] [--(no-)dry-run] <inputs-1> [<inputs-2>] ... [<inputs-n>] ...
         <inputs>: Input text file, one line per input
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
@@ -139,13 +151,14 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --starting-average-norm, --no-starting-average-norm: Normalize images by their mean before averaging during starting average (on by default)
         --iterations: Number of iterations of model building per stage (default: '4')
         --convergence: Convergence limit during registration calls (default: '1e-9')
-        --syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)
-        --syn-smoothing-sigmas: Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)
-        --syn-convergence: Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)
-        --syn-control: Non-linear (SyN) gradient and regularization parameters, not checked for correctness (default: '0.1,3,0')
         --linear-shrink-factors: Shrink factors for linear stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)
         --linear-smoothing-sigmas: Smoothing sigmas for linear stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)
         --linear-convergence: Convergence levels for linear stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)
+        --syn-shrink-factors: Shrink factors for Non-linear (SyN) stages, provide to override automatic generation, must be provided with sigmas and convergence (no default)
+        --syn-smoothing-sigmas: Smoothing sigmas for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and convergence (no default)
+        --syn-convergence: Convergence levels for Non-linear (SyN) stages, provide to override automatic generation, must be provided with shrinks and sigmas (no default)
+        --syn-control: Non-linear (SyN) gradient and regularization parameters, not checked for correctness (default: '0.2,3,0')
+        --syn-metric: Non-linear (SyN) metric and radius or bins, choose Mattes[32] for faster registrations (default: 'CC[2]')
         --float, --no-float: Use float instead of double for calculations (reduce memory requirements) (off by default)
         --fast, --no-fast: Run SyN registration with Mattes instead of CC (off by default)
         --average-type: Type of averaging to apply during modelbuild. Can be one of: 'mean', 'median', 'trimmed_mean', 'efficient_trimean' and 'huber' (default: 'mean')
@@ -160,19 +173,23 @@ Usage: ./modelbuild.sh [-h|--help] [--output-dir <arg>] [--gradient-step <arg>] 
         --masks: File containing mask filenames, one file per line (no default)
         --mask-extract, --no-mask-extract: Use masks to extract images before registration (off by default)
         --mask-merge-threshold: Threshold to combine masks during averaging (default: '0.5')
-        --stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only','volgenmodel-nlin'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'rigid,similarity,affine,nlin')
+        --stages: Stages of modelbuild used (comma separated options: 'rigid' 'similarity' 'affine' 'nlin' 'nlin-only','volgenmodel-nlin'), append a number in brackets 'rigid[n]' to override global iteration setting (default: 'nlin')
         --reuse-affines, --no-reuse-affines: Reuse affines from previous stage/iteration to initialize next stage (off by default)
         --final-target: Perform a final registration between the average and final target, used in postprocessing (default: 'none')
         --final-target-mask: Mask for the final target used in postprocessing (default: 'none')
-        --walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:30:00')
-        --walltime-linear: Walltime for linear registration stages (default: '0:45:00')
+        --walltime-short: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
+        --walltime-linear: Walltime for linear registration stages (default: '1:00:00')
         --walltime-nonlinear: Walltime for nonlinear registration stages (default: '4:30:00')
+        --chunksize-short: Commands to chunk per job submission for short jobs (averaging, resampling) (no default)
+        --chunksize-linear: Commands to chunk per job submission for linear registration (no default)
+        --chunksize-nonlinear: Commands to chunk per job submission for nonlinear registration (no default)
         --jobname-prefix: Prefix to add to front of job names, used by twolevel wrapper (no default)
         --job-predepend: Job name dependency pattern to prepend to all jobs, used by twolevel wrapper (no default)
         --skip-file-checks, --no-skip-file-checks: Skip preflight checking of existence of files, used by twolevel wrapper (off by default)
-        --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished. (off by default)
+        --block, --no-block: For SGE, PBS and SLURM, blocks execution until jobs are finished (off by default)
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
+FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: 'inputs'), but got only 0.
 ```
 
 Minimal run command, assuming an input text file `inputs.txt` containing one line
@@ -270,14 +287,16 @@ The two-level DBM wrapper takes the outputs from a `twolevel_modelbuild.sh` and 
 and subject-wise jacobian determinants for statistical analysis.
 
 ```bash
+$ twolevel_dbm.sh --help
 DBM post-processing for twolevel_modelbuild.sh from optimized_antsMultivariateTemplateConstruction
-Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--(no-)debug] [--(no-)dry-run] <inputs> ...
+Usage: ./twolevel_dbm.sh [-h|--help] [--output-dir <arg>] [--jacobian-smooth <arg>] [--walltime <arg>] [--target-space <SPACE>] [--(no-)debug] [--(no-)dry-run] <inputs> ...
         <inputs>: Input text files, one line per subject, comma separated scans per subject
         ... : Arguments to be passed to dbm.sh without validation
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
-        --jacobian-smooth: Comma separated list of smoothing gaussian FWHM, append "vox" for voxels, "mm" for millimeters (default: '4vox')
+        --jacobian-smooth: Comma separated list of smoothing Gaussian FWHMs, append "vox" for voxels, "mm" for millimeters (default: '4vox')
         --walltime: Walltime for short running stages (averaging, resampling) (default: '00:15:00')
+        --target-space: Target space for DBM outputs, requires --final-target be used with modelbuild.sh. Can be one of: 'unbiased' and 'final-target' (default: 'unbiased')
         --debug, --no-debug: Debug mode, print all commands to stdout (off by default)
         --dry-run, --no-dry-run: Dry run, don't run any commands, implies debug (off by default)
 ```
@@ -305,7 +324,7 @@ within-subject changes aligned at the population level.**
 labels between the input subject space and the common template space.
 
 These helper scripts can accept affine transforms which define the pre-alignment between the inputs to be resampled
-and the files used during template construction, othterwise, inputs are presumed to be already aligned in the space.
+and the files used during template construction, otherwise, inputs are presumed to be already aligned in the space.
 
 Common uses:
 
@@ -324,19 +343,15 @@ output/
 │   └── <run date/time in ISO format>
 │       ├── initialaverage
 │       ├── rigid_{0,1,2,3}_maskaverage
-│       ├── rigid_{0,1,2,3}_maskresample
 │       ├── rigid_{0,1,2,3}_reg
 │       ├── rigid_{0,1,2,3}_shapeupdate
 │       ├── similarity_{0,1,2,3}_maskaverage
-│       ├── similarity_{0,1,2,3}_maskresample
 │       ├── similarity_{0,1,2,3}_reg
 │       ├── similarity_{0,1,2,3}_shapeupdate
 │       ├── affine_{0,1,2,3}_maskaverage
-│       ├── affine_{0,1,2,3}_maskresample
 │       ├── affine_{0,1,2,3}_reg
 │       ├── affine_{0,1,2,3}_shapeupdate
 │       ├── nlin_{0,1,2,3}_maskaverage
-│       ├── nlin_{0,1,2,3}_maskresample
 │       ├── nlin_{0,1,2,3}_reg
 │       └── nlin_{0,1,2,3}_shapeupdate
 ├── dbm

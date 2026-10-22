@@ -51,11 +51,11 @@ def unbiased_std(n, var):
     - unbiased estimate of the population standard deviation
     """
     c_4 = 1 - (1 / (4 * (n))) - (7 / (32 * (n**2))) - (19 / (128 * (n**3)))
-    return var / c_4
+    return np.sqrt(var) / c_4
 
 def get_file_extension(file_name, method_type: str):
     file_extensions = ['.hdf5', '.mnc', '.nii.gz', '.nii', '.nrrd']
-    # check what type of file exntension the user provided
+    # check what type of file extension the user provided
     file_extension = [
         ext for ext in file_extensions if file_name.endswith(ext)][0]
     # split based on the extension type
@@ -227,33 +227,43 @@ if __name__ == "__main__":
                     concat_array[i,:] = array.flatten()
 
     elif image_type == 'timeseries':
-        # Assume all timeseries inputs are in the same space
+        # Assume all timeseries inputs are in the same space; each timepoint
+        # of each file is treated as an independent sample volume.
         shape = sitk.GetArrayViewFromImage(inputRefImage).shape[1:]
+        voxels = int(np.prod(shape))
+        if opts.method in mean_var_std_list:
+            count = 0
+            mean = np.zeros(voxels)
+            squared_diff = np.zeros(voxels)
+        else:
+            # Per-file timepoint counts may differ, so collect chunks and stack at the end.
+            concat_chunks = []
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
             if opts.verbose:
                 print(f"Reading image {file} {i+1}/{len(opts.file_list)}")
             img = sitk.ReadImage(file)
-            array = sitk.GetArrayViewFromImage(img)
-            if opts.normalize: # divide the image values by its mean
-                if opts.method in mean_var_std_list:
-                    array = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
-                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
-                else:
-                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
-                    concat_array[i,:] = array.reshape(array.shape[0], -1) / array.reshape(array.shape[0], -1).mean(axis = 1, keepdims=True)
+            array = sitk.GetArrayViewFromImage(img).reshape(-1, voxels)
+            if opts.normalize: # divide each timepoint by its own spatial mean
+                array = array / array.mean(axis=1, keepdims=True)
+            if opts.method in mean_var_std_list:
+                for sample in array:
+                    count, mean, squared_diff = welford_method(sample, count, mean, squared_diff)
             else:
-                if opts.method in mean_var_std_list:
-                    array = array.reshape(array.shape[0], -1)
-                    count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
-                else:
-                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(sitk.GetArrayViewFromImage(inputRefImage).shape[1:])])
-                    concat_array[i,:] = array.reshape(array.shape[0], -1)
+                concat_chunks.append(np.asarray(array))
+        if opts.method not in mean_var_std_list:
+            concat_array = np.vstack(concat_chunks)
 
     elif image_type == 'warp':
         # Assume all warp fields are in the same space
         shape = sitk.GetArrayViewFromImage(inputRefImage).shape
+        if opts.method in mean_var_std_list:
+            count = 0
+            mean = np.zeros(np.prod(inputRefImage.GetSize())*3)
+            squared_diff = np.zeros(np.prod(inputRefImage.GetSize())*3)
+        else:
+            concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
         for i,file in enumerate(opts.file_list):
             if not os.path.isfile(file):
                 raise ValueError("The provided file {file} does not exist.".format(file=file))
@@ -266,14 +276,12 @@ if __name__ == "__main__":
                     array = array.flatten()/array.mean()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
-                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
                     concat_array[i,:] = array.flatten()/array.mean()
             else:
                 if opts.method in mean_var_std_list:
                     array = array.flatten()
                     count, mean, squared_diff = welford_method(array, count, mean, squared_diff)
                 else:
-                    concat_array = np.empty(shape=[len(opts.file_list), np.prod(inputRefImage.GetSize())*3])
                     concat_array[i,:] = array.flatten()
 
     if opts.verbose:
@@ -346,7 +354,29 @@ if __name__ == "__main__":
         average_img.CopyInformation(inputRefImage)
         sitk.WriteImage(average_img, opts.output)
     elif image_type=='timeseries':
-        average_img = sitk.GetImageFromArray(average, isVector=False)
-        # Copy the image metadata from an the first extracted slice of the first image
-        average_img.CopyInformation(sitk.Extract(inputRefImage, inputRefImage.GetSize()[0:3] + tuple([0]), directionCollapseToStrategy=sitk.ExtractImageFilter.DIRECTIONCOLLAPSETOSUBMATRIX))
-        sitk.WriteImage(average_img, opts.output)
+        # Copy the image metadata from the first extracted slice of the first image
+        timeseriesRef = sitk.Extract(inputRefImage, inputRefImage.GetSize()[0:3] + tuple([0]), directionCollapseToStrategy=sitk.ExtractImageFilter.DIRECTIONCOLLAPSETOSUBMATRIX)
+        if opts.method in ['var', 'std']:
+            # save the var or std image
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, opts.output)
+            # save the mean image alongside
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, get_file_extension(opts.output, '_mean'))
+        elif opts.method == 'mean':
+            # save the mean image
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, opts.output)
+            # save the var image alongside
+            output = output.reshape(shape)
+            average_img = sitk.GetImageFromArray(output, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, get_file_extension(opts.output, '_var'))
+        else:
+            average_img = sitk.GetImageFromArray(average, isVector=False)
+            average_img.CopyInformation(timeseriesRef)
+            sitk.WriteImage(average_img, opts.output)

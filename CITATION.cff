@@ -1,3 +1,6 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
 title: optimized_antsMultivariateTemplateConstruction
 message: >-
@@ -8,9 +11,56 @@ authors:
   - family-names: Devenyi
     given-names: Gabriel Allan
     orcid: 'https://orcid.org/0000-0002-7766-1187'
+  - given-names: Jurgen
+    family-names: Germann
+    email: germannj@gmail.com
+    orcid: 'https://orcid.org/0000-0003-0995-8226'
+identifiers:
+  - type: doi
+    value: 10.52294/001c.133510
+    description: >-
+      Longitudinal deformation-based morphometry pipeline to
+      study neuroanatomical differences in structural MRI
+      based on SyN unbiased templates
 repository-code: >-
   https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction
+abstract: >-
+  Morphometric measures in humans derived from magnetic
+  resonance imaging (MRI) have provided important insights
+  into brain differences and changes associated with
+  development and disease in vivo. Deformation-based
+  morphometry (DBM) is a registration-based technique that
+  has been shown to be useful in detecting local volume
+  differences and longitudinal brain changes while not
+  requiring a priori segmentation or tissue classification.
+  Typically, DBM measures are derived from registration to
+  common template brain space (one-level DBM). Here, we
+  present a two-level DBM technique: first, the Jacobian
+  determinants are calculated for each individual input MRI
+  at the subject level to capture longitudinal individual
+  brain changes; then, in a second step, an unbiased common
+  group space is created, and the Jacobians co-registered to
+  enable the comparison of individual morphological changes
+  across subjects or groups. This two-level DBM is
+  particularly suitable for capturing longitudinal
+  intra-individual changes in vivo, as calculating the
+  Jacobians within-subject space leads to superior accuracy.
+  Using artificially induced volume differences, we
+  demonstrate that this two-level DBM pipeline is 4.5x more
+  sensitive in detecting longitudinal within-subject volume
+  changes compared to a typical one-level DBM approach. It
+  also captures the magnitude of the induced volume change
+  much more accurately. Using 150 subjects from the OASIS-2
+  dataset, we demonstrate that the two-level DBM is superior
+  in capturing cortical volume changes associated with
+  cognitive decline across patients with dementia and
+  cognitively healthy individuals. This pipeline provides
+  researchers with a powerful tool to study longitudinal
+  brain changes with superior accuracy and sensitivity. It
+  is publicly available and has already been used
+  successfully, proving its utility.
+license: GPL-3.0-or-later
 version: '1.0'
 date-released: '2024-12-06'
-license-url: https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/blob/master/LICENSE
-license: GPL-3.0-or-later
+license-url: >-
+  https://github.com/CoBrALab/optimized_antsMultivariateTemplateConstruction/blob/master/LICENSE
