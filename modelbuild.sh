@@ -1027,11 +1027,13 @@ for reg_type in "${_arg_stages[@]}"; do
 
         # Empty files
         true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
-        true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
         true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
 
         # Register images to target
         for j in "${!_arg_inputs[@]}"; do
+          # Commands for this scan, joined below into one line of the _reg job file
+          true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan
+          true >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample_scan
 
           # Check for existence of moving mask, if it exists, add option
           if [[ -s ${_arg_masks[${j}]} ]]; then
@@ -1069,7 +1071,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
                 ${_arg_inputs[${j}]} ${target} \
                 ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
-                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan
             elif [[ ${reg_type} == "nlin" ]]; then
               # Full registration affine + nlin
               walltime_reg=${_arg_walltime_nonlinear}
@@ -1091,7 +1093,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 --convergence ${_arg_convergence} \
                 ${_arg_inputs[${j}]} ${target} \
                 ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
-                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan
             elif [[ ${reg_type} == "nlin-only" ]]; then
               # nlin-only registration, affines always bootstrapped from previous iteration (if there is a previous)
               walltime_reg=${_arg_walltime_nonlinear}
@@ -1109,7 +1111,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 --convergence ${_arg_convergence} \
                 ${_arg_inputs[${j}]} ${target} \
                 ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
-                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan
             elif [[ ${reg_type} == *volgenmodel* ]]; then
               # nlin-only registration, affines always bootstrapped from previous iteration (if there is a previous)
                 echo antsRegistration_affine_SyN.sh --clobber \
@@ -1131,7 +1133,7 @@ for reg_type in "${_arg_stages[@]}"; do
                   --convergence ${_arg_convergence} \
                   ${_arg_inputs[${j}]} ${target} \
                   ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_ \
-                  >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+                  >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan
             fi
           fi
           # If input masks were provided, resample them using the registration
@@ -1143,7 +1145,7 @@ for reg_type in "${_arg_stages[@]}"; do
                 -r ${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
                 -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
-                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample_scan
             else
               echo antsApplyTransforms -d 3 ${_arg_float} \
                 -i ${_arg_masks[${j}]} \
@@ -1152,9 +1154,19 @@ for reg_type in "${_arg_stages[@]}"; do
                 -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_1Warp.nii.gz \
                 -t ${_arg_output_dir}/${reg_type}/${i}/transforms/$(basename ${_arg_inputs[${j}]} | extension_strip)_0GenericAffine.mat \
                 -o ${_arg_output_dir}/${reg_type}/${i}/resample/masks/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz \
-                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
+                >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample_scan
             fi
           fi
+
+          # Resample the mask of this scan in the same command as its registration,
+          # so that it does not need a separate job
+          if [[ -s ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan && -s ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample_scan ]]; then
+            echo "$(cat ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan) && $(cat ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample_scan)" \
+              >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+          else
+            cat ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample_scan >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
+          fi
+          rm -f ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg_scan ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample_scan
         done
 
         # If masks were supplied, merge them and hard threshold at >25% confidence
@@ -1178,7 +1190,6 @@ for reg_type in "${_arg_stages[@]}"; do
         fi
 
         debug "$(cat ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg)"
-        debug "$(cat ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample)"
         debug "$(cat ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage)"
 
         if [[ ${_arg_dry_run} == "off" ]]; then
@@ -1189,23 +1200,6 @@ for reg_type in "${_arg_stages[@]}"; do
             ${_arg_job_predepend} \
             ${last_round_job} \
             ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_reg
-          if [[ -s ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample ]]; then
-            qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
-              --walltime ${_arg_walltime_short} \
-              ${_arg_chunksize_short:+--chunksize ${_arg_chunksize_short}} \
-              --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskresample \
-              ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg* \
-              ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskresample
-          fi
-          # Need a special test here in case jobfile is empty
-          if [[ -s ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage ]]; then
-            qbatch ${_arg_block} --logdir ${_arg_output_dir}/logs/${__datetime} \
-              --walltime ${_arg_walltime_short} \
-              ${_arg_chunksize_short:+--chunksize ${_arg_chunksize_short}} \
-              --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskaverage \
-              ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskresample* \
-              -- bash ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage
-          fi
         fi
 
         rm -f ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate &&
@@ -1216,6 +1210,8 @@ for reg_type in "${_arg_stages[@]}"; do
         if [[ ! -s ${_arg_output_dir}/${reg_type}/${i}/average/template_sharpen_shapeupdate.nii.gz ]]; then
           echo "#!/usr/bin/env bash" >${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           echo "set -euo pipefail" >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
+          # The mask average runs at the start of the shape update job, not in a separate job
+          cat ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_maskaverage >>${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
 
         average_images ${_arg_average_prog} ${_arg_average_type} ${_arg_average_norm} ${_arg_output_dir}/${reg_type}/${i}/average/template.nii.gz \
           $(for j in "${!_arg_inputs[@]}"; do echo -n "${_arg_output_dir}/${reg_type}/${i}/resample/$(basename ${_arg_inputs[${j}]} | extension_strip).nii.gz "; done) \
@@ -1382,7 +1378,6 @@ for reg_type in "${_arg_stages[@]}"; do
               ${_arg_chunksize_short:+--chunksize ${_arg_chunksize_short}} \
               --jobname ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_shapeupdate \
               ${_arg_job_predepend} --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_reg \
-              --depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_maskaverage \
               -- bash ${_arg_output_dir}/jobs/${__datetime}/${reg_type}_${i}_shapeupdate
           fi
           last_round_job="--depend ${_arg_jobname_prefix}modelbuild_${__datetime}_${reg_type}_${i}_shapeupdate"
