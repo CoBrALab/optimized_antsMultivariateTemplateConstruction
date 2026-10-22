@@ -288,10 +288,21 @@ IFS=',' read -r -a _arg_jacobian_smooth <<<${_arg_jacobian_smooth}
 # Preflight check for required programs
 preflight_check
 
+# Affine Jacobians are computed from the determinant printed by antsTransformInfo,
+# which requires ANTs >= 2.5.3
+for file in "${_arg_inputs[@]}"; do
+  if [[ ! -s ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat ]]; then
+    failure "Expected affine file ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat does not exist"
+  fi
+done
+if ! antsTransformInfo ${_arg_output_dir}/final/transforms/$(basename ${_arg_inputs[0]} | extension_strip)_0GenericAffine.mat | grep -q '^Determinant:'; then
+  failure "antsTransformInfo does not report the affine determinant, ANTs >= 2.5.3 is required"
+fi
+
 # Make output directories
-mkdir -p ${_arg_output_dir}/dbm/intermediate/delin/{affine,warp,jacobian}
+mkdir -p ${_arg_output_dir}/dbm/intermediate/delin/{affine,jacobian}
 mkdir -p ${_arg_output_dir}/dbm/intermediate/nlin/jacobian
-mkdir -p ${_arg_output_dir}/dbm/intermediate/affine/{warp,jacobian}
+mkdir -p ${_arg_output_dir}/dbm/intermediate/affine/jacobian
 mkdir -p ${_arg_output_dir}/dbm/jacobian/{final-target,}/{relative,full}//smooth
 
 # Convert geometric option to ANTs option
@@ -325,33 +336,16 @@ if [[ ${_arg_dry_run} == "off" ]]; then
     ${_arg_output_dir}/dbm/jobs/${__datetime}/nlin_jacobian
 fi
 
-# Generate warp field from affine transform
-info "Computing warp fields from affine transforms"
-for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
-      -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
-      -o [ ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
-  fi
-done >${_arg_output_dir}/dbm/jobs/${__datetime}/affine_warp
-
-debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/affine_warp)"
-if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
-    --walltime ${_arg_walltime} \
-    -N ${_arg_jobname_prefix}dbm_${__datetime}_affine_warp \
-    ${_arg_output_dir}/dbm/jobs/${__datetime}/affine_warp
-fi
-
-# Generate jacobian from affine warp field
+# Generate log jacobian from affine transform determinant
+# An affine has a constant jacobian, so a single value is stored instead of an image
 # Log, values > 0, voxel expands towards subject (i.e. subject voxel is larger)
 # Log, values < 0, voxel contracts towards subject (i.e. subject voxel is smaller)
-info "Computing Jacobians from affine warp fields"
+info "Computing Jacobians from affine transforms"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/affine/warp/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).txt ]]; then
+    echo "antsTransformInfo ${_arg_output_dir}/final/transforms/$(basename ${file} | extension_strip)_0GenericAffine.mat \
+      | awk '/^Determinant:/ { printf \"%.17g\\n\", log(\$2); found = 1; exit } END { exit !found }' \
+      >${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).txt"
   fi
 done >${_arg_output_dir}/dbm/jobs/${__datetime}/affine_jacobian
 
@@ -360,7 +354,6 @@ if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${__datetime}_affine_jacobian \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_affine_warp \
     ${_arg_output_dir}/dbm/jobs/${__datetime}/affine_jacobian
 fi
 
@@ -410,42 +403,24 @@ if [[ ${_arg_dry_run} == "off" ]]; then
     ${_arg_output_dir}/dbm/jobs/${__datetime}/delin_affine_from_warp
 fi
 
-# Generate warp from delin affine
-info "Generate composite warp field from delin affine"
+# Generate log jacobian from inverse delin affine determinant
+# The inverse is used, so the value is the negative log of the determinant
+info "Computing Jacobians from delin affine transforms"
 for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "antsApplyTransforms -d 3 --verbose ${_arg_float} \
-      -r ${_arg_output_dir}/final/average/template_sharpen_shapeupdate.nii.gz \
-      -t [ ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat,1 ] \
-      -o [ ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz,1 ]"
+  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).txt ]]; then
+    echo "antsTransformInfo ${_arg_output_dir}/dbm/intermediate/delin/affine/$(basename ${file} | extension_strip).mat \
+      | awk '/^Determinant:/ { printf \"%.17g\\n\", -log(\$2); found = 1; exit } END { exit !found }' \
+      >${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).txt"
   fi
-done >${_arg_output_dir}/dbm/jobs/${__datetime}/delin_warp_from_delin_affine
+done >${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_affine
 
-debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/delin_warp_from_delin_affine)"
+debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_affine)"
 if [[ ${_arg_dry_run} == "off" ]]; then
   qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
     --walltime ${_arg_walltime} \
-    -N ${_arg_jobname_prefix}dbm_${__datetime}_delin_warp_from_delin_affine \
+    -N ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_affine \
     --depend ${_arg_jobname_prefix}dbm_${__datetime}_delin_affine_from_warp \
-    ${_arg_output_dir}/dbm/jobs/${__datetime}/delin_warp_from_delin_affine
-fi
-
-# Generate jacobians from delin warp field
-info "Computing Jacobians from delin affine warp fields"
-for file in "${_arg_inputs[@]}"; do
-  if [[ ! -s ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ]]; then
-    echo "CreateJacobianDeterminantImage 3 ${_arg_output_dir}/dbm/intermediate/delin/warp/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz ${_arg_log_jacobian} ${_arg_use_geometric}"
-  fi
-done >${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_warp
-
-debug "$(cat ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_warp)"
-if [[ ${_arg_dry_run} == "off" ]]; then
-  qbatch ${_arg_block} --logdir ${_arg_output_dir}/dbm/logs/${__datetime} \
-    --walltime ${_arg_walltime} \
-    -N ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_warp \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_delin_warp_from_delin_affine \
-    ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_warp
+    ${_arg_output_dir}/dbm/jobs/${__datetime}/jacobian_from_delin_affine
 fi
 
 # Generate final full jacobians
@@ -454,8 +429,8 @@ for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
       ${_arg_output_dir}/dbm/jacobian/full/$(basename ${file} | extension_strip).nii.gz \
-      + ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
+      + ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz \
+      \$(cat ${_arg_output_dir}/dbm/intermediate/affine/jacobian/$(basename ${file} | extension_strip).txt)"
   fi
 done >${_arg_output_dir}/dbm/jobs/${__datetime}/gen_full_jacobian
 
@@ -475,8 +450,8 @@ for file in "${_arg_inputs[@]}"; do
   if [[ ! -s ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz ]]; then
     echo "ImageMath 3 \
       ${_arg_output_dir}/dbm/jacobian/relative/$(basename ${file} | extension_strip).nii.gz \
-      + ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).nii.gz \
-      ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz"
+      + ${_arg_output_dir}/dbm/intermediate/nlin/jacobian/$(basename ${file} | extension_strip).nii.gz \
+      \$(cat ${_arg_output_dir}/dbm/intermediate/delin/jacobian/$(basename ${file} | extension_strip).txt)"
   fi
 done >${_arg_output_dir}/dbm/jobs/${__datetime}/gen_rel_jacobian
 
@@ -486,7 +461,7 @@ if [[ ${_arg_dry_run} == "off" ]]; then
     --walltime ${_arg_walltime} \
     -N ${_arg_jobname_prefix}dbm_${__datetime}_gen_rel_jacobian \
     --depend ${_arg_jobname_prefix}dbm_${__datetime}_nlin_jacobian \
-    --depend ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_warp \
+    --depend ${_arg_jobname_prefix}dbm_${__datetime}_jacobian_from_delin_affine \
     ${_arg_output_dir}/dbm/jobs/${__datetime}/gen_rel_jacobian
 fi
 
