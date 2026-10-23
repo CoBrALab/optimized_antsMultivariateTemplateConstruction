@@ -91,7 +91,9 @@ computational load
 
 This pipeline is primarily written in `bash`, and requires [ANTs](https://github.com/ANTsX/ANTs)
 for the commands, and [qbatch](https://github.com/CoBrALab/qbatch)
-for running commands locally or with cluster integration.
+for running commands locally or with cluster integration. `dbm.sh` requires
+ANTs 2.6.3 or newer, because it uses `antsTransformInfo` to get the determinant
+of affine transforms.
 
 A dependency submodule of [minc-toolkit-extras](https://github.com/cobralab/minc-toolkit-extras)
 is automatically included with appropriate versioning.
@@ -251,7 +253,7 @@ Usage: ./dbm.sh [-h|--help] [--output-dir <arg>] [--(no-)float] [--mask <arg>] [
         <inputs>: Input text files, one line per input, one file per spectra
         -h, --help: Prints help
         --output-dir: Output directory for modelbuild (default: 'output')
-        --float, --no-float: Use float instead of double for calculations (reduce memory requirements, reduce precision) (off by default)
+        --float, --no-float: Ignored, kept so that existing command lines continue to work (off by default)
         --mask: Mask file for average to improve delin estimates (no default)
         --target-space: Target space for DBM outputs, requires --final-target be used with modelbuild.sh. Can be one of: 'unbiased' and 'final-target' (default: 'unbiased')
         --delin-affine-ratio: Ratio of voxels within mask used to estimate delin affine (default: '0.25')
