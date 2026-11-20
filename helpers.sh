@@ -9,7 +9,7 @@ __datetime=$(date -u +%F_%H-%M-%S-UTC)
 ### BASH HELPER FUNCTIONS ###
 # Stolen from https://github.com/kvz/bash3boilerplate"
 
-if [[ ${_arg_dry_run} == "on" || ${_arg_debug} == "on" ]]; then
+if [[ ${_arg_dry_run:-off} == "on" || ${_arg_debug:-off} == "on" ]]; then
   LOG_LEVEL=7
 else
   LOG_LEVEL=6

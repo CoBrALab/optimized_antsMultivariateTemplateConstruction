@@ -1,3 +1,6 @@
 [submodule "antsRegistration_affine_SyN"]
 	path = antsRegistration_affine_SyN
 	url = https://github.com/CoBrALab/antsRegistration_affine_SyN.git
+[submodule "libBIDS.sh"]
+	path = libBIDS.sh
+	url = https://github.com/CoBrALab/libBIDS.sh.git
